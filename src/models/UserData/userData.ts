@@ -1,0 +1,60 @@
+export interface Features {
+    insurance: boolean;
+    bus: boolean;
+    pricing_plans: boolean;
+    passenger_calendar: boolean;
+    paymongo: boolean;
+    create_collective_booking: boolean;
+    visa_voucher: boolean;
+    bux: boolean;
+    voucher: boolean;
+    payments: boolean;
+    credit_transfers: boolean;
+    merchant_account_creation: boolean;
+    tour_packages_creation_admin: boolean;
+    holiday: boolean;
+    markups: boolean;
+    users: boolean;
+    help_center: boolean;
+    visa: boolean;
+    ferry: boolean;
+    hotel: boolean;
+    attractions: boolean;
+    airline: boolean;
+}
+
+export interface UserData {
+    id: string;
+    userId: string;
+    first_name: string;
+    last_name: string;
+    email: string;
+    mobile_no: string;
+    contact_no: string;
+    username: string;
+    agency_id: string;
+    agency_name: string;
+    company_name: string;
+    registration_no: string;
+    status: string;
+    type: string;
+    country: string;
+    country_name: string;
+    region_name: string;
+    city_name: string;
+    currency: string;
+    address_1: string;
+    address_2: string;
+    pin_code: string;
+    features: Features;
+    profile_pic: string;
+    created_at: string;
+    updated_at: string;
+    updated_by: string;
+    last_login: string;
+    meta: any[];
+    attachments: string[];
+    tin_number: string;
+    password: string;
+    bcryptPassword: string;
+}

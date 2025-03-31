@@ -1,0 +1,28 @@
+service: ferry-api
+frameworkVersion: '4.4.19'
+
+provider: 
+  name: aws
+  runtime: nodejs22.x
+  region: ap-southeast-1
+  timeout: 120
+
+functions:
+  ferrySearch: 
+    handler: src/handlers/ferrySearchLambdaHandler.ferrySearchLambdaHandler
+    events:
+      - http:
+          path: /api/ferry/search
+          method: post
+          cors: true
+
+  ferryComputeCharges:
+    handler: src/handlers/ferryComputeChargesLambdaHandler.ferryComputeChargesLambdaHandler
+    events:
+      - http:
+          path: /api/ferry/compute-charges
+          method: post
+          cors: true
+
+plugins:
+  - serverless-offline
