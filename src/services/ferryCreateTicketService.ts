@@ -240,8 +240,9 @@ export const getLatestTicket = async (token: string, trackingId: string): Promis
 
 /**
  * Gets the total fare from voyage data
+ *  - Skipped for now since this was used in Markup
  */
-export const getVoyageTotalFare = async (cachedComputeCharges: any): Promise<number> => {
+export const getVoyageTotalFare = async (cachedComputeCharges: any): Promise<number> => { 
   if (!cachedComputeCharges || typeof cachedComputeCharges !== 'object') {
     throw new Error("No cached compute charges found.");
   }

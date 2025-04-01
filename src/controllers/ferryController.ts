@@ -3,6 +3,7 @@ import AuthService from '../services/authService';
 import { fetchFerryData } from '../services/ferrySearchService';
 import { computeFerryCharges } from '../services/ferryComputeChargesService';
 import { createFerryTicket, getLatestTicket, getVoyageTotalFare } from '../services/ferryCreateTicketService';
+import { fetchTicketData } from '../services/ferryTicketSearchService';
 import { sendResponse } from '../utils/response';
 import { getTrackingId } from '../middlewares/loggerMiddleware';
 import logger from '../utils/logger';
@@ -111,6 +112,55 @@ export class FerryController {
         : `Internal server error. Please contact our administrator and present this tracking ID: ${trackingId}`;
       logger.error({
         message: 'Create ticket failed',
+        trackingId,
+        error: error instanceof Error ? error.message : String(error),
+        request: req.body
+      });
+      sendResponse(req, res, false, statusCode, message, error);
+    }
+  }
+
+  static async getTickets(req: Request, res: Response): Promise<void> {
+    const trackingId = getTrackingId(req);
+    
+    try {
+      // Get token for API authentication
+      const token = await AuthService.getToken();
+      
+      // Fetch ticket data based on request parameters
+      const results = await fetchTicketData(req.body, token, trackingId);
+      
+      sendResponse(req, res, true, 200, 'Ticket search completed successfully', results);
+    } catch (error) {
+      const statusCode = error instanceof Error ? 400 : 500;
+      const message = statusCode === 400 && error instanceof Error
+        ? (error as Error).message
+        : `Internal server error. Please contact our administrator and present this tracking ID: ${trackingId}`;
+      logger.error({
+        message: 'Get tickets failed',
+        trackingId,
+        error: error instanceof Error ? error.message : String(error),
+        request: req.body
+      });
+      sendResponse(req, res, false, statusCode, message, error);
+    }
+  }
+
+  static async confirmBooking(req: Request, res: Response): Promise<void> {
+    const trackingId = getTrackingId(req);
+    
+    try {
+      // Simple success response, matching the PHP implementation
+      sendResponse(req, res, true, 200, 'Booking confirmed successfully', {
+        success: true
+      });
+    } catch (error) {
+      const statusCode = error instanceof Error ? 400 : 500;
+      const message = statusCode === 400 &&  error instanceof Error
+        ? (error as Error).message
+        : `Internal server error. Please contact our administrator and present this tracking ID: ${trackingId}`;
+      logger.error({
+        message: 'Confirm booking failed',
         trackingId,
         error: error instanceof Error ? error.message : String(error),
         request: req.body
