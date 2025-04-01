@@ -1,6 +1,6 @@
 import { APIGatewayEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { validateFerryTicketRequest } from '../utils/validation';
-import { createFerryTicket, getLatestTicket, getVoyageTotalFare } from '../services/ferryCreateTicket';
+import { createFerryTicket, getLatestTicket, getVoyageTotalFare } from '../services/ferryCreateTicketService';
 import AuthService from '../services/authService';
 import logger from '../utils/logger';
 import { randomUUID } from 'crypto';

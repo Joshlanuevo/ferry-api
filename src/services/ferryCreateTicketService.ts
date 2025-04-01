@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { FerryTicketRequest } from '../models/FerryTicket/FerryTicketRequest';
 import { FerryTicketResponse } from '../models/FerryTicket/FerryTicketResponse';
+import { FerrySearchTicketsRequest } from '../models/FerrySearchTickets/FerrySearchTicketsRequest';
 import logger from '../utils/logger';
 
 const API_CONFIG = {
@@ -108,8 +109,7 @@ export const createFerryTicket = async (
  * Function to search for tickets
  */
 export const searchFerryTickets = async (
-    dateFrom: string = new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    dateTo: string = new Date().toISOString().split('T')[0],
+    searchParams: FerrySearchTicketsRequest,
     token: string,
     trackingId: string,
   ): Promise<any> => {
@@ -118,13 +118,22 @@ export const searchFerryTickets = async (
       const baseUri = API_CONFIG[env].baseUri;
       const url = `${baseUri}/outlet/search-ticket/searchbyreferenceanddate`;
       const timeout = parseInt(process.env.API_TIMEOUT || '30000', 10);
+
+      // Prepare default dates if not provided
+      if (!searchParams.dateFrom) {
+        searchParams.dateFrom = new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      }
+      if (!searchParams.dateTo) {
+        searchParams.dateTo = new Date().toISOString().split('T')[0];
+      }
   
       // Log the request
       logger.info({
         message: `API Request: ${url}`,
         trackingId,
         method: 'POST',
-        url
+        url,
+        data: searchParams
       });
   
       const response = await axios({
@@ -136,23 +145,16 @@ export const searchFerryTickets = async (
           'Accept': 'application/json',
           'X-Request-ID': trackingId,
         },
-        data: {
-          dateFrom,
-          dateTo
-        },
+        data: searchParams,
         timeout,
       });
   
-      // Log the response structure to see what we're getting
+      // Log response
       logger.info({
-        message: 'Ticket search response structure',
+        message: `API Response: ${url}`,
         trackingId,
-        responseStructure: {
-          keys: Object.keys(response.data),
-          hasData: !!response.data.data,
-          dataType: response.data.data ? typeof response.data.data : 'undefined',
-          isDataArray: Array.isArray(response.data.data)
-        }
+        statusCode: response.status,
+        responseTime: `${Date.now() - new Date().getTime()}ms`,
       });
   
       if (response.data && response.data.error_message) {
@@ -163,19 +165,14 @@ export const searchFerryTickets = async (
       let ticketsData;
       
       if (Array.isArray(response.data)) {
-        // If response is directly an array
         ticketsData = response.data;
       } else if (response.data.data && Array.isArray(response.data.data)) {
-        // If response has a data property that's an array
         ticketsData = response.data.data;
       } else if (response.data.tickets && Array.isArray(response.data.tickets)) {
-        // Some APIs use 'tickets' as the key
         ticketsData = response.data.tickets;
       } else if (response.data.results && Array.isArray(response.data.results)) {
-        // Some APIs use 'results' as the key
         ticketsData = response.data.results;
       } else {
-        // If we can't find any expected format, log the response and throw an error
         logger.error({
           message: 'Unexpected API response format',
           trackingId,
@@ -200,7 +197,13 @@ export const searchFerryTickets = async (
  */
 export const getLatestTicket = async (token: string, trackingId: string): Promise<any[]> => {
   try {
-    const tickets = await searchFerryTickets(undefined, undefined, token, trackingId);
+    // Using empty search params will get all recent tickets
+    const searchParams: FerrySearchTicketsRequest = {
+      dateFrom: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      dateTo: new Date().toISOString().split('T')[0]
+    };
+
+    const tickets = await searchFerryTickets(searchParams, token, trackingId);
     
     if (!tickets || tickets.length === 0) {
       throw new Error("No tickets found.");

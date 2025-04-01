@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import AuthService from '../services/authService';
 import { fetchFerryData } from '../services/ferrySearchService';
 import { computeFerryCharges } from '../services/ferryComputeChargesService';
-import { createFerryTicket, getLatestTicket, getVoyageTotalFare } from '../services/ferryCreateTicket';
+import { createFerryTicket, getLatestTicket, getVoyageTotalFare } from '../services/ferryCreateTicketService';
 import { sendResponse } from '../utils/response';
 import { getTrackingId } from '../middlewares/loggerMiddleware';
 import logger from '../utils/logger';
@@ -83,6 +83,11 @@ export class FerryController {
       
       // Get the latest ticket data
       const ticketDataArray = await getLatestTicket(token, trackingId);
+
+      if (!ticketDataArray || ticketDataArray.length === 0) {
+        throw new Error("No ticket data found after creation.");
+      }
+
       const ticketData = ticketDataArray[0];
       
       if (!ticketData || !ticketData.transactionInfo || !ticketData.transactionInfo.bookingReferenceNumber) {
@@ -96,7 +101,7 @@ export class FerryController {
         status: true,
         printUrl: ticketResponse.printUrl,
         data: ticketDataArray,
-        booking_reference_no: confirmationNumber
+        booking_reference_no: confirmationNumber,
       });
       
     } catch (error) {
