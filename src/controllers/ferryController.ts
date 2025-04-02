@@ -69,6 +69,15 @@ export class FerryController {
         throw new Error("No cached compute charges found. Please compute charges first.");
       }
 
+      const total = await getVoyageTotalFare(cachedComputeCharges);
+
+      // Log the total for verification
+      logger.info({
+        message: 'Total fare calculated',
+        trackingId,
+        total,
+      });
+
       // Get token for API authentication
       const token = await AuthService.getToken();
       
