@@ -7060,3 +7060,4 @@
 {"level":"info","message":"Response: POST /login","timestamp":"2025-04-02 12:50:29","trackingId":"6a9ca0ac-be43-4a6d-9308-1b1140c8450a","statusCode":200,"responseTime":"362ms","service":"ferry-api"}
 {"level":"info","message":"Request: OPTIONS /v1/auth/login","timestamp":"2025-04-02 12:55:23","trackingId":"7860cd02-019d-418a-a6d7-360af2ffa8aa","method":"OPTIONS","path":"/v1/auth/login","query":{},"body":{},"service":"ferry-api"}
 {"level":"info","message":"Response: OPTIONS /v1/auth/login","timestamp":"2025-04-02 12:55:23","trackingId":"7860cd02-019d-418a-a6d7-360af2ffa8aa","statusCode":404,"responseTime":"21ms","service":"ferry-api"}
+{"level":"info","message":"Server running on http://localhost:3000","timestamp":"2025-04-02 18:03:10","service":"ferry-api"}

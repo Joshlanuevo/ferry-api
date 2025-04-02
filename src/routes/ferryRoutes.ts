@@ -9,5 +9,6 @@ router.post('/hold_booking', FerryController.holdBooking);
 router.post('/create_ticket', FerryController.createTicket);
 router.post('/get_tickets', FerryController.getTickets);
 router.post('/confirm_booking', FerryController.confirmBooking);
+router.post('/void_booking/:transaction_id', FerryController.voidBooking);
 
 export default router;
