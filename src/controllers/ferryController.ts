@@ -4,8 +4,6 @@ import { fetchFerryData } from '../services/ferrySearchService';
 import { computeFerryCharges } from '../services/ferryComputeChargesService';
 import { createFerryTicket, getLatestTicket, getVoyageTotalFare } from '../services/ferryCreateTicketService';
 import { fetchTicketData } from '../services/ferryTicketSearchService';
-import { voidFerryBooking } from '../services/ferryVoidService';
-import { getTransactionData, issueRefund, removeFromBookings } from '../services/transactionService';
 import { sendResponse } from '../utils/response';
 import { getTrackingId } from '../middlewares/loggerMiddleware';
 import logger from '../utils/logger';
@@ -172,80 +170,6 @@ export class FerryController {
         : `Internal server error. Please contact our administrator and present this tracking ID: ${trackingId}`;
       logger.error({
         message: 'Confirm booking failed',
-        trackingId,
-        error: error instanceof Error ? error.message : String(error),
-        request: req.body
-      });
-      sendResponse(req, res, false, statusCode, message, error);
-    }
-  }
-
-  static async voidBooking(req: Request, res: Response): Promise<void> {
-    const trackingId = getTrackingId(req);
-
-    try {
-      const { transaction_id, remarks } = req.body;
-
-      if (!transaction_id) {
-        throw new Error('Transaction ID is required');
-      }
-
-      // Get transaction data 
-      const transactionData = await getTransactionData(transaction_id, trackingId);
-
-      if (!transactionData) {
-        throw new Error('Transaction not found');
-      }
-
-      // Get token for API authentication
-      const token = await AuthService.getToken();
-
-      // Void each booking in the transaction
-      const ticketDataArray = transactionData.meta?.response;
-
-      if (!Array.isArray(ticketDataArray) || ticketDataArray.length === 0) {
-        throw new Error('No ticket data found in transaction');
-      }
-
-      for (const ticketDataItem of ticketDataArray) {
-        if (!ticketDataItem) continue;
-        
-        const bookingId = ticketDataItem.barkotaBookingId;
-        if (!bookingId) {
-          logger.warn({
-            message: 'Missing booking ID in ticket data',
-            trackingId,
-            ticketData: ticketDataItem,
-          });
-          continue;
-        }
-        
-        const voidRemarks = remarks || 'Voided by user';
-        const result = await voidFerryBooking(bookingId, voidRemarks, token, trackingId);
-        
-        if (!result) {
-          throw new Error('Failed to void booking');
-        }
-      }
-
-      // Issue refund
-      const userId = req.session?.user?.id || null;
-      const agentId = req.session?.user?.agentId || null;
-
-      const isRefundSuccess = await issueRefund(transaction_id, userId, agentId, trackingId);
-
-      if (isRefundSuccess) {
-        await removeFromBookings(transaction_id);
-      }
-
-      sendResponse(req, res, true, 200, 'Booking voided successfully', { status: true });
-    } catch (error) {
-      const statusCode = error instanceof Error ? 400 : 500;
-      const message = statusCode === 400 && error instanceof Error
-        ? (error as Error).message
-        : `Internal server error. Please contact our administrator and present this tracking ID: ${trackingId}`;
-      logger.error({
-        message: 'Void booking failed',
         trackingId,
         error: error instanceof Error ? error.message : String(error),
         request: req.body

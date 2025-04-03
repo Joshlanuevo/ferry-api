@@ -11,23 +11,38 @@ export const getTransactionData = async (
     trackingId: string,
   ): Promise<any> => {
     try {
-        const transactionDoc = await db
-            .collection('user_balance_transactions')
-            .doc(transactionId)
-            .get();
+      logger.info({
+        message: 'Attempting to retrieve transaction',
+        trackingId,
+        transactionId,
+        collection: 'user_balance_transactions'
+      });
+      
+      // Make sure this is the correct collection path
+      const transactionDoc = await db
+        .collection('user_balance_transactions')
+        .doc(transactionId)
+        .get();
   
-        if (!transactionDoc.exists) {
-            throw new Error('Transaction not found');
-        }
+      logger.info({
+        message: 'Transaction document exists?',
+        trackingId,
+        exists: transactionDoc.exists,
+        transactionId
+      });
   
-        return transactionDoc.data();
+      if (!transactionDoc.exists) {
+        throw new Error('Transaction not found');
+      }
+  
+      return transactionDoc.data();
     } catch (error) {
-        logger.error({
-            message: 'Get transaction failed',
-            trackingId,
-            error: error instanceof Error ? error.message : String(error)
-        });
-        throw error;
+      logger.error({
+        message: 'Get transaction failed',
+        trackingId,
+        error: error instanceof Error ? error.message : String(error)
+      });
+      throw error;
     }
 };
 
@@ -86,6 +101,34 @@ export const issueRefund = async (
             error: error instanceof Error ? error.message : String(error),
         });
         return false;
+    }
+};
+
+export const saveTransaction = async (
+    transactionData: any,
+    trackingId: string
+  ): Promise<boolean> => {
+    try {
+      await db
+        .collection('user_balance_transactions')
+        .doc(transactionData.transaction_id)
+        .set(transactionData);
+      
+      logger.info({
+        message: 'Transaction saved to Firestore',
+        trackingId,
+        transactionId: transactionData.transaction_id,
+        collection: 'user_balance_transactions'
+      });
+      
+      return true;
+    } catch (error) {
+      logger.error({
+        message: 'Save transaction failed',
+        trackingId,
+        error: error instanceof Error ? error.message : String(error)
+      });
+      return false;
     }
 };
 

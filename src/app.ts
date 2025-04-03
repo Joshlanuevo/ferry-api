@@ -57,6 +57,7 @@ declare module 'express-session' {
     user?: {
       id: string;
       agentId: string;
+      user_name: string;
     };
   }
 }
