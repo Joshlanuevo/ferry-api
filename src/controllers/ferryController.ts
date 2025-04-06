@@ -3,10 +3,15 @@ import AuthService from '../services/authService';
 import { fetchFerryData } from '../services/ferrySearchService';
 import { computeFerryCharges } from '../services/ferryComputeChargesService';
 import { createFerryTicket, getLatestTicket, getVoyageTotalFare } from '../services/ferryCreateTicketService';
+import { UserBalanceService } from '../services/userBalanceService';
+import { commitTransaction } from '../services/transactionService2';
+import { checkSufficientOnHoldBalance, getUserFundsOnHold } from '../services/userFundsService';
 import { fetchTicketData } from '../services/ferryTicketSearchService';
+import { isAdmin } from '../utils/user';
 import { sendResponse } from '../utils/response';
 import { getTrackingId } from '../middlewares/loggerMiddleware';
 import logger from '../utils/logger';
+import { TransactionTypes } from '../enums/TransactionTypes';
 
 export class FerryController {
 
@@ -78,6 +83,39 @@ export class FerryController {
         total,
       });
 
+      const userId = req.body.user_id || req.body.userId;
+      if (!userId) throw new Error("User not authenticated.");
+
+      const user = await UserBalanceService.getUser(userId);
+
+      if (!isAdmin(user)) {
+        const balance = await UserBalanceService.getUserBalanceData(userId, trackingId);
+        if (!balance || balance.total < total) {
+          throw new Error("Insufficient balance to proceed with ticket purchase.");
+        }
+
+        const hasSufficientBalance = await checkSufficientOnHoldBalance(
+          userId,
+          balance.total,
+          total,
+          user?.currency || 'PHP',
+          trackingId
+        );
+
+        if (!hasSufficientBalance) {
+          const fundsOnHold = await getUserFundsOnHold(userId, user?.currency || 'PHP', trackingId);
+          throw new Error(`Not enough credits for this transaction because ${fundsOnHold} ${user?.currency || 'PHP'} is still on hold.`);
+        }
+
+        logger.info({
+          message: 'User balance check',
+          trackingId,
+          userId,
+          balance,
+          total,
+        }); 
+      }
+1 
       // Get token for API authentication
       const token = await AuthService.getToken();
       
@@ -105,6 +143,23 @@ export class FerryController {
       }
       
       const confirmationNumber = ticketData.transactionInfo.bookingReferenceNumber;
+
+      // 💸 Commit the transaction
+      await commitTransaction({
+        userId: user?.id || '',
+        amount: total, // this will be auto-negated in commitTransaction
+        currency: user?.currency || 'PHP',
+        type: TransactionTypes.ferry,
+        createdBy: user?.id || '',
+        userName: `${user?.first_name} ${user?.last_name}`,
+        meta: {
+          request: req.body,
+          response: ticketDataArray,
+          compute_charges: cachedComputeCharges,
+          printUrl: ticketResponse.printUrl,
+          booking_reference_no: confirmationNumber,
+        },
+      });
       
       // Return the response
       sendResponse(req, res, true, 200, 'Ferry ticket created successfully', {

@@ -1,4 +1,4 @@
-enum UserTypes {
+export enum UserTypes {
     SUPERADMIN = "superadmin",
     ADMIN = "admin",
     MASTERAGENT = "masteragent",

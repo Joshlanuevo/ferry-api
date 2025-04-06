@@ -24,6 +24,7 @@ export class UserModel implements UserData {
     address_2!: string;
     pin_code!: string;
     features: any;
+    access_level!: string;
     profile_pic!: string;
     created_at!: string;
     updated_at!: string;

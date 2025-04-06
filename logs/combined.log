@@ -7399,3 +7399,6 @@
 {"level":"error","message":"Get transaction failed","timestamp":"2025-04-03 16:25:52","trackingId":"bead6e05-833e-4d68-811c-6b83f38e4b3c","error":"Transaction not found","service":"ferry-api"}
 {"level":"error","message":"Void booking failed","timestamp":"2025-04-03 16:25:52","trackingId":"bead6e05-833e-4d68-811c-6b83f38e4b3c","error":"Transaction not found","request":{"transaction_id":"BTO1751299365001","remarks":"User requested void"},"service":"ferry-api"}
 {"level":"info","message":"Response: POST /void_booking","timestamp":"2025-04-03 16:25:52","trackingId":"bead6e05-833e-4d68-811c-6b83f38e4b3c","statusCode":400,"responseTime":"120ms","service":"ferry-api"}
+{"level":"info","message":"Server running on http://localhost:3000","timestamp":"2025-04-04 13:47:19","service":"ferry-api"}
+{"level":"info","message":"Request: POST /api/login","timestamp":"2025-04-04 13:47:34","trackingId":"a3f79571-5b52-4155-a682-21100478c521","method":"POST","path":"/api/login","query":{},"body":{"email":"superadmin@potb.com","password":"123456"},"service":"ferry-api"}
+{"level":"info","message":"Response: POST /login","timestamp":"2025-04-04 13:47:36","trackingId":"a3f79571-5b52-4155-a682-21100478c521","statusCode":200,"responseTime":"1641ms","service":"ferry-api"}
