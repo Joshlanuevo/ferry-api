@@ -89,7 +89,7 @@ export class FerryController {
       const user = await UserBalanceService.getUser(userId);
 
       if (!isAdmin(user)) {
-        const balance = await UserBalanceService.getUserBalanceData(userId, trackingId);
+        const balance = await UserBalanceService.getUserBalanceData(userId);
         if (!balance || balance.total < total) {
           throw new Error("Insufficient balance to proceed with ticket purchase.");
         }

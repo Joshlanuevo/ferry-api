@@ -25,7 +25,7 @@ export class UserBalanceService {
         }
     }
     
-    static async getUserBalanceData(userId: string, trackingId: string): Promise<UserBalance | null> {
+    static async getUserBalanceData(userId: string): Promise<UserBalance | null> {
         try {
             const user = await this.getUserInternal(userId);
             if (!user || user.access_level === 'admin') {
