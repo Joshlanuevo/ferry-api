@@ -6,3 +6,6 @@ node_modules/
 
 # Serverless Framework
 .serverless/
+
+src/lib/Firebase/credentials.json
+src/lib/Firebase/credentials-live.json

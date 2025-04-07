@@ -1,8 +1,9 @@
 import { BasicUserModel } from './../models/BasicUserModel';
-import admin from "../utils/firebase";
 import { AccessControlService } from './accessControlService';
 import { AgencyService } from './agencyService';
+import { UserBalance } from '../models/UserBalance/UserBalance';
 import { UserModel } from '../models/UserModel';
+import admin from "../utils/firebase";
 
 const accessControlService = new AccessControlService();
 const agencyService = new AgencyService();

@@ -1,4 +1,4 @@
-interface UserBalance {
+export interface UserBalance {
     userId: string;
     total: number;
     currency: string;

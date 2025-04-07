@@ -1,9 +1,8 @@
-import { BasicUserModel } from '../models/BasicUserModel';
 import { UserTypes } from '../enums/UserTypes';
+import { UserModel } from '../models/UserModel';
 
-export function isAdmin(user?: BasicUserModel | null): boolean {
+export function isAdmin(user?: UserModel | null): boolean {
     if (!user || !user.type) return false;
   
-    const type = user.type.toUpperCase();
-    return type === UserTypes.ADMIN || type === UserTypes.SUPERADMIN;
+    return user.type === UserTypes.ADMIN || user.type === UserTypes.SUPERADMIN;
 }
