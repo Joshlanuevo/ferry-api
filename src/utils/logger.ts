@@ -1,5 +1,8 @@
+import dotenv from 'dotenv';
 import winston from 'winston';
 import path from 'path';
+
+dotenv.config();  
 
 const logFormat = winston.format.printf(({ level, message, timestamp, trackingId, ...rest }) => {
   const logObject = {

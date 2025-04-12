@@ -1,5 +1,8 @@
-import { Firestore, FieldValue } from '@google-cloud/firestore';
+import dotenv from 'dotenv';
+import { Firestore, CollectionReference } from '@google-cloud/firestore';
 import { FirebaseCollections } from '../enums/FirebaseCollections';
+
+dotenv.config();
 
 export class FirebaseLib {
     private firestore: Firestore;
@@ -47,4 +50,64 @@ export class FirebaseLib {
         return {};
       }
     }
+
+      /**
+   * Get documents from a Firestore collection filtered by the provided criteria.
+   * 
+   * @param collection The collection to query
+   * @param filters An array of filter conditions in the format [key, comparison, value]
+   * @param order An optional array containing the ordering key and direction ['key', 'direction']
+   * @param limit An optional limit on the number of documents to return
+   * @param offset An optional starting point for pagination
+   * @param includeId Whether to include document IDs in the result
+   */
+  async getDocumentsFiltered(
+    collection: string,
+    filters: [string, string, any][] = [],
+    order: [string, string] = ['', ''],
+    limit?: number,
+    offset?: any,
+    includeId = false
+  ): Promise<any[]> {
+    // Define the collection to query
+    const collectionRef: CollectionReference = this.firestore.collection(collection);
+
+    // Initialize the query
+    let query: any = collectionRef;
+
+    // Apply filters to the query
+    for (const filter of filters) {
+      const [key, comparison, value] = filter;
+      query = query.where(key, comparison, value);
+    }
+
+    // Apply ordering to the query if provided
+    if (order[0] && order[1]) {
+      const [key, direction] = order;
+      query = query.orderBy(key, direction);
+      
+      if (offset !== null && offset !== undefined) {
+        query = query.startAfter(offset);
+      }
+    }
+
+    // Apply limit to the query if provided
+    if (limit !== null && limit !== undefined) {
+      query = query.limit(limit);
+    }
+
+    // Execute the query and get the documents
+    const snapshot = await query.get();
+
+    // Extract the data from the documents into an array
+    const output: any = {};
+    snapshot.forEach((doc: any) => {
+      if (doc.exists) {
+        const docId = doc.id;
+        output[docId] = doc.data();
+      }
+    });
+
+    return includeId ? output : Object.values(output);
+  }
 }

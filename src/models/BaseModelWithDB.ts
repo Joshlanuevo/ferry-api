@@ -1,6 +1,7 @@
 import { BaseModel } from "./BaseModel";
 import { FirebaseCollections } from "../enums/FirebaseCollections";
 import { FirebaseLib } from "../lib/FirebaseLib";
+import { isFullArray } from "../utils/helpers";
 
 export abstract class BaseModelWithDB extends BaseModel {
     protected collection!: FirebaseCollections;
@@ -34,7 +35,7 @@ export abstract class BaseModelWithDB extends BaseModel {
         data = await this.firebase.getData(collection, docID);
       }
       
-      if (!this.isFullArray(data)) return {};
+      if (!isFullArray(data)) return {};
       
       if (!doFill) return data;
       
@@ -62,19 +63,5 @@ export abstract class BaseModelWithDB extends BaseModel {
   
     protected getCollectionValue(): string {
       return this.collection;
-    }
-  
-    protected isFullArray(value: any): boolean {
-      if (!value) return false;
-      
-      if (Array.isArray(value)) {
-        return value.length > 0;
-      }
-      
-      if (typeof value === 'object') {
-        return Object.keys(value).length > 0;
-      }
-      
-      return false;
     }
 }

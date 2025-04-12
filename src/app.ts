@@ -1,17 +1,21 @@
 import express from 'express';
 import session from 'express-session';
-import serverless from 'serverless-http';
+import dotenv from 'dotenv';
 import routes from './routes';
 import { errorLoggerMiddleware, loggerMiddleware } from './middlewares/loggerMiddleware';
-import logger from './utils/logger';
+
+dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || '3000';
+
+if (!process.env.SESSION_SECRET) {
+  throw new Error('SESSION_SECRET is not defined in environment variables.');
+}
 
 // Session Middleware
 app.use(
   session({
-    secret: process.env.SESSION_SECRET || "my_secret_key",
+    secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: true,
     cookie: {
@@ -37,20 +41,6 @@ app.get('/', (req, res) => {
 // Error handling middleware
 app.use(errorLoggerMiddleware);
 
-const server = app.listen(PORT, () => {
-  logger.info(`Server running on http://localhost:${PORT}`);
-});
-
-// Error handlers
-process.on('unhandledRejection', (reason, promise) => {
-  logger.error('Unhandled Rejection', { reason });
-});
-
-process.on('uncaughtException', (error) => {
-  logger.error('Uncaught Exception', { error });
-  server.close(() => process.exit(1));
-});
-
 declare module 'express-session' {
   interface SessionData {
     ferryComputeCharges?: any;
@@ -62,4 +52,4 @@ declare module 'express-session' {
   }
 }
 
-export const handler = serverless(app);
+export default app;

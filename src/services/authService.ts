@@ -4,17 +4,13 @@ import jwtUtil from "../utils/jwt";
 import dotenv from "dotenv";
 import { UserData } from "../models/UserData/userData";
 import { UserModel } from "../models/UserModel";
+import { FerryAuthRequest } from '../models/FerryAuth/FerryAuthRequest';
+import { FerryAuthResponse } from '../models/FerryAuth/FerryAuthResponse';
+import { getApiUrl } from "../config/ferryApiConfig";
+import { getValue } from "../utils/helpers";
 import admin from "../utils/firebase";
 
 dotenv.config();
-
-const BASE_URI = process.env.NODE_ENV === 'production' 
-    ? 'https://barkota-reseller-php-staging-4kl27j34za-uc.a.run.app' 
-    : 'https://barkota-reseller-php-staging-4kl27j34za-uc.a.run.app';
-
-const ENDPOINT = process.env.NODE_ENV === 'production' 
-    ? process.env.FERRY_ENDPOINT_LIVE || '/oauth' 
-    : process.env.FERRY_ENDPOINT_DEV || '/oauth';
 
 const db = admin.firestore();
 const FERRY_AUTH_COLLECTION = 'ferryAuthTokens';
@@ -27,39 +23,44 @@ class AuthService {
      */
     async requestToken(): Promise<string> {
         try {
-            console.log(`Requesting auth token from ${BASE_URI}${ENDPOINT}`);
+            const ferryAuthUrl = getApiUrl('ferryAuth');
+            const requestModel = new FerryAuthRequest();
 
-            const requestBody = {
-                grant_type: 'client_credentials',
-                client_id: process.env.FERRY_CLIENT_ID,
-                client_secret: process.env.FERRY_PW
-            };
-
-            console.log("FERRY_CLIENT_ID:", process.env.FERRY_CLIENT_ID);
-            console.log("FERRY_PW:", process.env.FERRY_PW);
-
-            console.log("Auth request payload:", JSON.stringify(requestBody, null, 2));
-            console.log("Auth endpoint:", BASE_URI + ENDPOINT);
+            console.log(`Requesting auth token from ${ferryAuthUrl}`);
+            console.log("Using client_id:", requestModel.client_id);
+            console.log("Using client_secret:", requestModel.client_secret ? '*****' : 'Not Set');
+            console.log("Auth request payload:", JSON.stringify(requestModel.toJSON(), null, 2));
+            console.log("Auth endpoint:", ferryAuthUrl);
             
-            const response = await axios.post(`${BASE_URI}${ENDPOINT}`, requestBody, {
+            const result = await axios.post(ferryAuthUrl, requestModel.toJSON(), {
                 headers: { 'Content-Type': 'application/json' },
                 timeout: API_TIMEOUT,
-            });            
+            });       
 
-            console.log("Full auth response:", JSON.stringify(response.data));
+            console.log("Full auth response:", JSON.stringify(result.data));
 
-            // Check if response.data has error_message
-            if (response.data.error_message) {
-                throw new Error(response.data.error_message);
-            }
-            // Direct access to the access_token in the response
-            const accessToken = response.data.access_token;
-            if (!accessToken) {
-                throw new Error(`Error: No access token found in response: ${JSON.stringify(response.data)}`);
+            // Check if result.data has error_message (similar to PHP implementation)
+            if (getValue(result, "error_message")) {
+                throw new Error(result.data.error_message);
             }
 
-            await this.storeToken(accessToken, response.data.expires_in || 3600);
-            return accessToken;
+            // Check if response body is valid (similar to PHP implementation)
+            if (!result.data) {
+                throw new Error("Invalid response from Third Party API");
+            }
+
+            // Check for error status (similar to PHP implementation)
+            if (getValue(result.data, "status")) {
+                throw new Error(this.formatErrorMessage(result.data));
+            }
+
+            const response = new FerryAuthResponse(result.data);
+            if (!response.access_token) {
+                throw new Error(`Error: No access token found in response: ${JSON.stringify(result.data)}`);
+            }
+
+            await this.storeToken(response.access_token, response.expires_in || 3600);
+            return response.access_token;
         } catch (error) {
             // Improved error handling
             if (axios.isAxiosError(error)) {
@@ -128,6 +129,7 @@ class AuthService {
     async validateUser(email: string, password: string): Promise<UserModel | null> {
         const user = await this.getUserByEmail(email);
         if (!user || user.length === 0) return null;
+        console.log("Raw user data from Firestore:", user[0]);
         return (await bcryptUtil.compareData(password, user[0].bcryptPassword)) ? new UserModel(user[0]) : null;
     }
 
@@ -166,6 +168,9 @@ class AuthService {
         }
     }
 
+    /**
+     * Format error messages similar to the PHP implementation
+     */
     private formatErrorMessage(errorModel: any): string {
         let errorMsg = `Error: ${errorModel.title} - ${errorModel.detail}`;
         return errorMsg.includes('sensitive') || errorMsg.includes('internal')

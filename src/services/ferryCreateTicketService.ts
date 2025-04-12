@@ -1,19 +1,12 @@
 import axios from 'axios';
+import dotenv from 'dotenv';
 import { FerryTicketRequest } from '../models/FerryTicket/FerryTicketRequest';
 import { FerryTicketResponse } from '../models/FerryTicket/FerryTicketResponse';
 import { FerrySearchTicketsRequest } from '../models/FerrySearchTickets/FerrySearchTicketsRequest';
+import { getApiUrl } from '../config/ferryApiConfig';
 import logger from '../utils/logger';
 
-const API_CONFIG = {
-  development: {
-    baseUri: 'https://barkota-reseller-php-staging-4kl27j34za-uc.a.run.app',
-    endpoint: '/outlet/confirm-booking'
-  },
-  production: {
-    baseUri: 'https://barkota-reseller-php-staging-4kl27j34za-uc.a.run.app',
-    endpoint: '/outlet/confirm-booking'
-  }
-};
+dotenv.config();
 
 /**
  * Creates a ferry ticket by calling the external Barkota API
@@ -24,9 +17,7 @@ export const createFerryTicket = async (
   trackingId: string,
 ): Promise<FerryTicketResponse> => {
   try {
-    const env = process.env.NODE_ENV === 'production' ? 'production' : 'development';
-    const { baseUri, endpoint } = API_CONFIG[env];
-    const url = `${baseUri}${endpoint}`;
+    const url = getApiUrl('createFerryTicket');
     const timeout = parseInt(process.env.API_TIMEOUT || '30000', 10);
 
     // Log external API request
@@ -45,9 +36,9 @@ export const createFerryTicket = async (
       url,
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
         'Accept': 'application/json',
         'X-Request-ID': trackingId,
+        'Authorization': `Bearer ${token}`,
       },
       data: request,
       timeout,
@@ -125,13 +116,10 @@ export const createFerryTicket = async (
  */
 export const searchFerryTickets = async (
     searchParams: FerrySearchTicketsRequest,
-    token: string,
     trackingId: string,
   ): Promise<any> => {
     try {
-      const env = process.env.NODE_ENV === 'production' ? 'production' : 'development';
-      const baseUri = API_CONFIG[env].baseUri;
-      const url = `${baseUri}/outlet/search-ticket/searchbyreferenceanddate`;
+      const url = getApiUrl('searchTickets');
       const timeout = parseInt(process.env.API_TIMEOUT || '30000', 10);
 
       // Prepare default dates if not provided
@@ -158,7 +146,6 @@ export const searchFerryTickets = async (
         url,
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
           'Accept': 'application/json',
           'X-Request-ID': trackingId,
         },
@@ -221,7 +208,7 @@ export const searchFerryTickets = async (
 /**
  * Gets the latest ticket
  */
-export const getLatestTicket = async (token: string, trackingId: string): Promise<any[]> => {
+export const getLatestTicket = async (trackingId: string): Promise<any[]> => {
   try {
     // Using empty search params will get all recent tickets
     const searchParams: FerrySearchTicketsRequest = {
@@ -229,7 +216,7 @@ export const getLatestTicket = async (token: string, trackingId: string): Promis
       dateTo: new Date().toISOString().split('T')[0]
     };
 
-    const tickets = await searchFerryTickets(searchParams, token, trackingId);
+    const tickets = await searchFerryTickets(searchParams, trackingId);
     
     if (!tickets || tickets.length === 0) {
       throw new Error("No tickets found.");

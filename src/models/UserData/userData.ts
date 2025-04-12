@@ -47,6 +47,7 @@ export interface UserData {
     address_2: string;
     pin_code: string;
     features: Features;
+    access_level: string;
     profile_pic: string;
     created_at: string;
     updated_at: string;

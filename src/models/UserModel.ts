@@ -39,4 +39,24 @@ export class UserModel implements UserData {
     constructor(userData: Partial<UserData>) {
         Object.assign(this, userData);
     }
+
+    toJSON(): UserData {
+        const {
+            id, userId, first_name, last_name, email, mobile_no, contact_no,
+            username, agency_id, agency_name, company_name, registration_no,
+            status, type, country, country_name, region_name, city_name,
+            currency, address_1, address_2, pin_code, features, access_level,
+            profile_pic, created_at, updated_at, updated_by, last_login,
+            meta, attachments, tin_number, password, bcryptPassword
+        } = this;
+
+        return {
+            id, userId, first_name, last_name, email, mobile_no, contact_no,
+            username, agency_id, agency_name, company_name, registration_no,
+            status, type, country, country_name, region_name, city_name,
+            currency, address_1, address_2, pin_code, features, access_level,
+            profile_pic, created_at, updated_at, updated_by, last_login,
+            meta, attachments, tin_number, password, bcryptPassword
+        };
+    }
 }

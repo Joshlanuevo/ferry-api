@@ -1,6 +1,7 @@
 import { AccessControl } from '../models/AccessControl';
 import { FirebaseLib } from '../lib/FirebaseLib';
 import { FirebaseCollections } from '../enums/FirebaseCollections';
+import { isFullArray } from '../utils/helpers';
 
 export class AccessControlService {
     private firebase: FirebaseLib;
@@ -23,7 +24,7 @@ export class AccessControlService {
         // Fetch the data directly from Firestore
         const accessData = await this.getAccessControlData(id);
         
-        if (!this.isFullArray(accessData)) {
+        if (!isFullArray(accessData)) {
           return null;
         }
         
@@ -42,7 +43,7 @@ export class AccessControlService {
     private async getAccessControlData(docID: string): Promise<Record<string, any>> {
       try {
         const data = await this.firebase.getData(
-          FirebaseCollections.ACCESS_LEVELS, 
+          FirebaseCollections.access_levels, 
           docID
         );
         
@@ -51,24 +52,5 @@ export class AccessControlService {
         console.error('Error getting access control data:', error);
         return {};
       }
-    }
-  
-    /**
-     * Check if value is a non-empty array or object
-     * @param value The value to check
-     * @returns Boolean indicating if the value is a "full" array or object
-     */
-    private isFullArray(value: any): boolean {
-      if (!value) return false;
-      
-      if (Array.isArray(value)) {
-        return value.length > 0;
-      }
-      
-      if (typeof value === 'object') {
-        return Object.keys(value).length > 0;
-      }
-      
-      return false;
     }
 }

@@ -3,6 +3,7 @@ import { PlatformFeatures } from "./PlatformFeatures";
 import { FirebaseCollections } from '../enums/FirebaseCollections';
 import { AttachmentDocuments } from './Includes/AttachmentDocuments';
 import { ISOCurrencyEnums } from './Currency/ISOCurrencyEnums';
+import { isFullArray } from '../utils/helpers';
 
 export class AgencyModel extends BaseModelWithDB {
     id!: string;
@@ -33,18 +34,18 @@ export class AgencyModel extends BaseModelWithDB {
     constructor(data: Partial<AgencyModel> = {}) {
       super(data);
       this.currency = this.currency || ISOCurrencyEnums.PHP;
-      this.collection = FirebaseCollections.AGENCIES;
+      this.collection = FirebaseCollections.agencies;
     }
   
     protected transformers(key: string, value: any): any {
       if (key === 'attachments') {
-        if (!this.isFullArray(value)) return [];
+        if (!isFullArray(value)) return [];
         return value.map((attachment: any) => new AttachmentDocuments(attachment));
       } else if (key === 'currency') {
         if (!value) return this.currency;
         return value as ISOCurrencyEnums;
       } else if (key === 'features') {
-        if (!this.isFullArray(value)) {
+        if (!isFullArray(value)) {
           value = {};
         }
         return new PlatformFeatures(value);

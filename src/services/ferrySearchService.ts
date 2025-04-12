@@ -1,18 +1,11 @@
 import axios from 'axios';
+import dotenv from 'dotenv';
 import { FerrySearchRequest } from '../models/FerrySearch/FerrySearchRequest';
 import { FerrySearchResponse } from '../models/FerrySearch/FerrySearchResponse';
+import { getApiUrl } from '../config/ferryApiConfig';
 import logger from '../utils/logger';
 
-const API_CONFIG = {
-    development: {
-      baseUri: 'https://barkota-reseller-php-staging-4kl27j34za-uc.a.run.app',
-      endpoint: '/outlet/voyage-accommodations/bylocation'
-    },
-    production: {
-      baseUri: 'https://barkota-reseller-php-staging-4kl27j34za-uc.a.run.app',
-      endpoint: '/outlet/voyage-accommodations/bylocation'
-    }
-};
+dotenv.config();
 
 /**
  * Calls external Barkota API to fetch ferry search data
@@ -23,17 +16,15 @@ export const fetchFerryData = async (
     trackingId: string,
 ): Promise<FerrySearchResponse> => {
     try {
-        const env = process.env.NODE_ENV === 'production' ? 'production' : 'development';
-        const { baseUri, endpoint } = API_CONFIG[env];
-        const url = `${baseUri}${endpoint}`;
+        const url = getApiUrl('ferrySearch');
         const timeout = parseInt(process.env.API_TIMEOUT || '30000', 10);
 
         // Log external API request
         logger.info({
-            message: `API Request: ${url}`,
+            message: 'API Request to Barkota',
             trackingId,
             method: 'POST',
-            url
+            url,
         });
 
         const startTime = Date.now();
@@ -43,9 +34,9 @@ export const fetchFerryData = async (
             url,
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`,
                 'Accept': 'application/json',
                 'X-Request-ID': trackingId,
+                'Authorization': `Bearer ${token}`,
             },
             data: request,
             timeout,
@@ -83,20 +74,21 @@ export const fetchFerryData = async (
         };
     } catch (error) {
         logger.error({
-            message: 'API request failed',
-            trackingId,
-            error: error instanceof Error ? error.message : String(error)
+          message: 'API request failed',
+          trackingId,
+          error: error instanceof Error ? error.message : String(error),
         });
-        
+    
         if (axios.isAxiosError(error)) {
-            const status = error.response?.status;
-            
-            if (status === 401) {
-                throw new Error('Authentication failed: Invalid or expired token');
-            } else if (status === 400) {
-                throw new Error(`Bad request: ${JSON.stringify(error.response?.data)}`);
-            }
+          const status = error.response?.status;
+    
+          if (status === 401) {
+            throw new Error('Authentication failed: Invalid or expired session.');
+          } else if (status === 400) {
+            throw new Error(`Bad request: ${JSON.stringify(error.response?.data)}`);
+          }
         }
+    
         throw error;
     }
 };

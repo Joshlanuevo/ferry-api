@@ -1,18 +1,11 @@
 import axios from 'axios';
+import dotenv from 'dotenv';
 import { FerryComputeChargesRequest } from '../models/FerryComputeCharges/FerryComputeChargesRequest';
 import { FerryComputeChargesResponse } from '../models/FerryComputeCharges/FerryComputeChargesResponse';
+import { getApiUrl } from '../config/ferryApiConfig';
 import logger from '../utils/logger';
 
-const API_CONFIG = {
-  development: {
-    baseUri: 'https://barkota-reseller-php-staging-4kl27j34za-uc.a.run.app',
-    endpoint: '/outlet/compute-charges/passage'
-  },
-  production: {
-    baseUri: 'https://barkota-reseller-php-staging-4kl27j34za-uc.a.run.app',
-    endpoint: '/outlet/compute-charges/passage'
-  }
-};
+dotenv.config();
 
 /**
  * Calls external Barkota API to compute ferry charges
@@ -23,9 +16,7 @@ export const computeFerryCharges = async (
   trackingId: string,
 ): Promise<FerryComputeChargesResponse> => {
   try {
-    const env = process.env.NODE_ENV === 'production' ? 'production' : 'development';
-    const { baseUri, endpoint } = API_CONFIG[env];
-    const url = `${baseUri}${endpoint}`;
+    const url = getApiUrl('computeCharges');
     const timeout = parseInt(process.env.API_TIMEOUT || '30000', 10);
 
     // Log external API request
@@ -43,9 +34,9 @@ export const computeFerryCharges = async (
       url,
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
         'Accept': 'application/json',
         'X-Request-ID': trackingId,
+        'Authorization': `Bearer ${token}`,
       },
       data: request,
       timeout,
