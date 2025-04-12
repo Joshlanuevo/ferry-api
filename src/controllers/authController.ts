@@ -1,11 +1,6 @@
 import { Request, Response } from "express";
-import { v4 as uuidv4 } from 'uuid';
 import AuthService from "../services/authService";
-import { getSecretKey, hash } from '../utils/sodium';
-import admin from "../utils/firebase";
 import { sendResponse } from "../utils/response";
-import logger from '../utils/logger';
-import { FirebaseCollections } from "../enums/FirebaseCollections";
 
 class AuthController {
     public async login(req: Request, res: Response): Promise<void> {
@@ -46,12 +41,6 @@ class AuthController {
             return sendResponse(req, res, false, 500, "Internal server error.");
         }
     }
-}
-
-function stripUndefined(obj: Record<string, any>): Record<string, any> {
-    return Object.fromEntries(
-        Object.entries(obj).filter(([_, v]) => v !== undefined)
-    );
 }
 
 export default new AuthController();
