@@ -2,8 +2,8 @@ import { Request, Response } from "express";
 import AuthService from "../services/authService";
 import { sendResponse } from "../utils/response";
 
-class AuthController {
-    public async login(req: Request, res: Response): Promise<void> {
+export class AuthController {
+    static async login(req: Request, res: Response): Promise<void> {
         try {
             const { email, password } = req.body;
             const user = await AuthService.validateUser(email, password);
@@ -25,7 +25,7 @@ class AuthController {
         }
     }
 
-    public async updateUserPassword(req: Request, res: Response): Promise<void> {
+    static async updateUserPassword(req: Request, res: Response): Promise<void> {
         try {
             const { userId, bcryptPassword } = req.body;
             if (!userId || !bcryptPassword) {
