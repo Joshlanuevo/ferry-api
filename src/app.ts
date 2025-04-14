@@ -3,6 +3,7 @@ import session from 'express-session';
 import dotenv from 'dotenv';
 import routes from './routes';
 import { errorLoggerMiddleware, loggerMiddleware } from './middlewares/loggerMiddleware';
+import { configureSession } from './config/sessionConfig';
 
 dotenv.config();
 
@@ -13,18 +14,7 @@ if (!process.env.SESSION_SECRET) {
 }
 
 // Session Middleware
-app.use(
-  session({
-    secret: process.env.SESSION_SECRET,
-    resave: false,
-    saveUninitialized: true,
-    cookie: {
-      secure: process.env.NODE_ENV === "production", 
-      httpOnly: true,
-      maxAge: 1000 * 60 * 60, // 1 hour
-    },
-  })
-);
+app.use(session(configureSession()));
 
 // Middleware
 app.use(express.json());

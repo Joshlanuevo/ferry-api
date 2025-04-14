@@ -4,25 +4,80 @@ frameworkVersion: '4.4.19'
 provider: 
   name: aws
   runtime: nodejs22.x
+  stage: ${opt:stage, 'dev'}
   region: ap-southeast-1
   timeout: 120
+  environment:
+    NODE_ENV: ${self:provider.stage}
+    SESSION_SECRET: ${env:SESSION_SECRET}
+    FERRY_CLIENT_ID: ${env:FERRY_CLIENT_ID}
+    FERRY_PW: ${env:FERRY_PW}
+    FERRY_DEV_CLIENT_ID: ${env:FERRY_DEV_CLIENT_ID}
+    FERRY_DEV_PW: ${env:FERRY_DEV_PW}
+    DEV_FIREBASE_PROJECT_ID: ${env:DEV_FIREBASE_PROJECT_ID}
+    DEV_FIREBASE_PRIVATE_KEY: ${env:DEV_FIREBASE_PRIVATE_KEY}
+    DEV_FIREBASE_CLIENT_EMAIL: ${env:DEV_FIREBASE_CLIENT_EMAIL}
+    PROD_FIREBASE_PROJECT_ID: ${env:PROD_FIREBASE_PROJECT_ID}
+    PROD_FIREBASE_PRIVATE_KEY: ${env:PROD_FIREBASE_PRIVATE_KEY}
+    PROD_FIREBASE_CLIENT_EMAIL: ${env:PROD_FIREBASE_CLIENT_EMAIL}
+    LOG_LEVEL: ${env:LOG_LEVEL, 'info'}
+  iamRoleStatements:
+  - Effect: Allow
+    Action:
+      - dynamodb:GetItem
+      - dynamodb:PutItem
+      - dynamodb:UpdateItem
+      - dynamodb:DeleteItem
+      - dynamodb:Query
+      - dynamodb:Scan
+  Resource:
+    - !GetAtt SessionsTable.Arn
 
 functions:
-  ferrySearch: 
-    handler: src/handlers/ferrySearchLambdaHandler.ferrySearchLambdaHandler
+  api:
+    handler: src/lambda.handler
     events:
       - http:
-          path: /api/ferry/search
-          method: post
+          path: /
+          method: ANY
+          cors: true
+      - http:
+          path: /{proxy+}
+          method: ANY
           cors: true
 
-  ferryComputeCharges:
-    handler: src/handlers/ferryComputeChargesLambdaHandler.ferryComputeChargesLambdaHandler
-    events:
-      - http:
-          path: /api/ferry/compute-charges
-          method: post
-          cors: true
+resources:
+  Resources:
+    SessionsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ferry-api-sessions-${self:provider.stage}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        TimeToLiveSpecification:
+          AttributeName: expires
+          Enabled: true
+
+package:
+  individually: true
+  patterns:
+    - '!.git/**'
+    - '!node_modules/**'
+    - '!logs/**'
+    - 'node_modules/sodium-plus/**'
+    - 'node_modules/libsodium-wrappers/**'
+    - 'node_modules/firebase-admin/**'
+    - 'node_modules/bcrypt/**'
 
 plugins:
+  - serverless-http
   - serverless-offline
+
+custom:
+  serverless-offline:
+    httpPort: 3000

@@ -2,76 +2,76 @@ import { Request, Response, NextFunction } from 'express';
 import { randomUUID } from 'crypto';
 import logger from '../utils/logger';
 
-// Middleware to add trackingId and log requests/responses
-export const loggerMiddleware = (req: Request, res: Response, next: NextFunction) => {
-  // Generate trackingId
-  const trackingId = randomUUID();
-  (req as any).trackingId = trackingId;
-  res.setHeader('X-Request-ID', trackingId);
+// Middleware to add logging for each request
+export const loggerMiddleware = (req: Request, res: Response, next: NextFunction): void => {
+  // Use tracking ID from Lambda if available, otherwise generate one
+  if (!req.trackingId) {
+    req.trackingId = randomUUID();
+  }
   
-  // Log start time
-  const startTime = Date.now();
-  
-  // Log request details
   logger.info({
-    message: `Request: ${req.method} ${req.path}`,
-    trackingId,
+    message: `Incoming request: ${req.method} ${req.url}`,
+    trackingId: req.trackingId,
     method: req.method,
-    path: req.path,
-    query: req.query,
-    body: req.body,
+    url: req.url,
+    ip: req.ip,
+    headers: req.headers,
+    user: req.session?.user?.id || 'unauthenticated'
   });
   
-  // Override end method to log response
-  const originalEnd = res.end;
-  res.end = function(this: Response, ...args: any[]) {
-    // Calculate response time
-    const responseTime = Date.now() - startTime;
+  // Track response time
+  const start = Date.now();
+  
+  // Log response when finished
+  res.on('finish', () => {
+    const duration = Date.now() - start;
     
-    // Log response
     logger.info({
-      message: `Response: ${req.method} ${req.path}`,
-      trackingId,
+      message: `Response sent: ${res.statusCode}`,
+      trackingId: req.trackingId,
       statusCode: res.statusCode,
-      responseTime: `${responseTime}ms`,
+      duration: `${duration}ms`,
+      user: req.session?.user?.id || 'unauthenticated'
     });
-    
-    // Restore original end
-    res.end = originalEnd;
-    return originalEnd.apply(this, args as [any, BufferEncoding, (() => void)?]);
-  } as any;
+  });
   
   next();
 };
 
-// Error logging middleware
+// Middleware to handle and log errors
 export const errorLoggerMiddleware = (
   err: Error, 
   req: Request, 
   res: Response, 
   next: NextFunction
-) => {
-  const trackingId = (req as any).trackingId || randomUUID();
-  
+): void => {
   logger.error({
-    message: `Error: ${err.message}`,
-    trackingId,
+    message: `Error processing request: ${err.message}`,
+    trackingId: req.trackingId || 'no-tracking-id',
+    error: err.message,
+    stack: err.stack,
+    url: req.url,
     method: req.method,
-    path: req.path,
-    error: {
-      name: err.name,
-      stack: err.stack,
-    },
+    user: req.session?.user?.id || 'unauthenticated'
   });
   
-  res.status(500).json({
-    status: false,
-    message: 'Internal Server Error',
-    trackingId,
+  res.status(500).json({ 
+    success: false, 
+    message: 'Internal server error', 
+    tracking_id: req.trackingId 
   });
 };
 
-// Helper to get trackingId
+// Helper to get tracking ID from request
 export const getTrackingId = (req: Request): string => {
-  return (req as any).trackingId || randomUUID();
+  return req.trackingId || 'no-tracking-id';
 };
+
+// Add tracking ID to Request interface
+declare global {
+  namespace Express {
+    interface Request {
+      trackingId?: string;
+    }
+  }
+}

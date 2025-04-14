@@ -27,22 +27,33 @@ const logger = winston.createLogger({
   ),
   defaultMeta: { service: 'ferry-api' },
   transports: [
-    new winston.transports.File({ 
-      filename: path.join(process.cwd(), 'logs', 'error.log'), 
-      level: 'error' 
-    }),
-    new winston.transports.File({ 
-      filename: path.join(process.cwd(), 'logs', 'combined.log') 
-    }),
-    ...(process.env.NODE_ENV !== 'production' ? [
-      new winston.transports.Console({
-        format: winston.format.combine(
-          winston.format.colorize(),
-          winston.format.simple()
-        )
-      })
-    ] : [])
+    // Always use console transport in Lambda
+    new winston.transports.Console({
+      format: winston.format.combine(
+        winston.format.colorize(),
+        winston.format.simple()
+      )
+    })
   ]
 });
+
+// Add file transports when not in Lambda environment
+if (!process.env.AWS_LAMBDA_FUNCTION_NAME) {
+  try {
+    logger.add(
+      new winston.transports.File({ 
+        filename: path.join(process.cwd(), 'logs', 'error.log'), 
+        level: 'error' 
+      })
+    );
+    logger.add(
+      new winston.transports.File({ 
+        filename: path.join(process.cwd(), 'logs', 'combined.log') 
+      })
+    );
+  } catch (error) {
+    console.error('Failed to initialize file logging: ', error);
+  }
+}
 
 export default logger;
