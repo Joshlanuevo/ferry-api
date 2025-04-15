@@ -7957,3 +7957,4 @@
 {"level":"info","message":"API Request to Barkota","timestamp":"2025-04-14 17:46:17","trackingId":"0fa2a302-af0a-4448-aca8-139724d0a735","method":"POST","url":"https://barkota-reseller-php-staging-4kl27j34za-uc.a.run.app/outlet/voyage-accommodations/bylocation","service":"ferry-api"}
 {"level":"info","message":"API Response: https://barkota-reseller-php-staging-4kl27j34za-uc.a.run.app/outlet/voyage-accommodations/bylocation","timestamp":"2025-04-14 17:46:17","trackingId":"0fa2a302-af0a-4448-aca8-139724d0a735","statusCode":200,"responseTime":"371ms","service":"ferry-api"}
 {"level":"info","message":"Response sent: 200","timestamp":"2025-04-14 17:46:17","trackingId":"0fa2a302-af0a-4448-aca8-139724d0a735","statusCode":200,"duration":"512ms","user":"KkwLy7sEGcOwQmrLofSl","service":"ferry-api"}
+{"level":"info","message":"Server running on http://localhost:3000","timestamp":"2025-04-15 12:02:19","service":"ferry-api"}

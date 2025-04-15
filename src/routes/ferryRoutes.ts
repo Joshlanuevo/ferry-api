@@ -1,11 +1,12 @@
 import express from 'express';
 import { FerryController } from '../controllers/ferryController';
-import { requireAdmin } from '../middlewares/authMiddleware';
+import { requireAdmin, extractUserFromHeaders } from '../middlewares/userHeadersMiddleware';
 import { validateSessionKey } from '../middlewares/sessionMiddleware';
 
 const router = express.Router();
 
 router.use(validateSessionKey);
+router.use(extractUserFromHeaders);
 
 router.post('/search', FerryController.search);
 router.post('/compute_charges', FerryController.computeCharges);
