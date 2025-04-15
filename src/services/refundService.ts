@@ -1,7 +1,8 @@
-import admin from '../utils/firebase';
 import { v4 as uuidv4 } from 'uuid';
-import logger from '../utils/logger';
+import { FirebaseCollections } from '../enums/FirebaseCollections';
 import { TransactionTypes } from '../enums/TransactionTypes';
+import admin from '../utils/firebase';
+import logger from '../utils/logger';
 
 const db = admin.firestore();
 
@@ -51,7 +52,7 @@ export async function issueRefund({
       };
       
       await db
-        .collection('user_balance_transactions')
+        .collection(FirebaseCollections.user_balance_transactions)
         .doc(refundTransactionId)
         .set(refundTransaction);
         

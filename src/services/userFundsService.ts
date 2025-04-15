@@ -1,4 +1,5 @@
 import { FundsOnHold } from "../models/FundsOnHold/FundsOnHold";
+import { FirebaseCollections } from "../enums/FirebaseCollections";
 import admin from "../utils/firebase";
 import logger from "../utils/logger";
 
@@ -23,7 +24,7 @@ export async function getUserFundsOnHold(
     
     try {
       const snapshot = await db
-        .collection('user_funds_on_hold')
+        .collection(FirebaseCollections.user_funds_on_hold)
         .where('userId', '==', userId)
         .get();
       

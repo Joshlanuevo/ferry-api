@@ -1,6 +1,7 @@
-import admin from '../utils/firebase';
 import { v4 as uuidv4 } from 'uuid';
+import { FirebaseCollections } from '../enums/FirebaseCollections';
 import { TransactionTypes } from '../enums/TransactionTypes';
+import admin from '../utils/firebase';
 import logger from '../utils/logger';
 
 const db = admin.firestore();
@@ -46,7 +47,7 @@ export async function commitTransaction({
     };
   
     await db
-      .collection('user_balance_transactions')
+      .collection(FirebaseCollections.user_balance_transactions)
       .doc(transactionDoc.transaction_id)
       .set(transactionDoc);
 }
@@ -57,7 +58,7 @@ export async function commitTransaction({
 export async function getTransactionData(transactionId: string): Promise<any> {
   try {
     const transactionSnapshot = await db
-      .collection('user_balance_transactions')
+      .collection(FirebaseCollections.user_balance_transactions)
       .doc(transactionId)
       .get();
     
@@ -82,7 +83,7 @@ export async function getTransactionData(transactionId: string): Promise<any> {
 export async function removeFromBookings(bookingId: string): Promise<boolean> {
   try {
     await db
-      .collection('ferry_bookings')
+      .collection(FirebaseCollections.ferry_bookings)
       .doc(bookingId)
       .delete();
     

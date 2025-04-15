@@ -6,6 +6,8 @@ import { UserData } from "../models/UserData/userData";
 import { UserModel } from "../models/UserModel";
 import { FerryAuthRequest } from '../models/FerryAuth/FerryAuthRequest';
 import { FerryAuthResponse } from '../models/FerryAuth/FerryAuthResponse';
+import { FERRY_AUTH_TOKEN_COLLECTION, CURRENT_TOKEN } from '../utils/constants';
+import { FirebaseCollections } from '../enums/FirebaseCollections';
 import { getApiUrl } from "../config/ferryApiConfig";
 import { getValue } from "../utils/helpers";
 import admin from "../utils/firebase";
@@ -13,8 +15,8 @@ import admin from "../utils/firebase";
 dotenv.config();
 
 const db = admin.firestore();
-const FERRY_AUTH_COLLECTION = 'ferryAuthTokens';
-const TOKEN_DOC_ID = 'currentToken';
+const FERRY_AUTH_COLLECTION = FERRY_AUTH_TOKEN_COLLECTION;
+const TOKEN_DOC_ID = CURRENT_TOKEN;
 const API_TIMEOUT = parseInt(process.env.API_TIMEOUT || '30000', 10);
 
 class AuthService {
@@ -136,7 +138,7 @@ class AuthService {
     async updateUserPassword(userId: string, password: string): Promise<boolean> {
         try {
             const hashedPassword = await bcryptUtil.hashData(password);
-            await db.collection('users').doc(userId).update({ bcryptPassword: hashedPassword });
+            await db.collection(FirebaseCollections.users).doc(userId).update({ bcryptPassword: hashedPassword });
             return true;
         } catch (error) {
             console.error('Error updating user password:', error);
@@ -159,7 +161,7 @@ class AuthService {
 
     private async getUserByEmail(email: string) {
         try {
-            const usersRef = db.collection('users');
+            const usersRef = db.collection(FirebaseCollections.users);
             const querySnapshot = await usersRef.where('email', '==', email).get();
             return querySnapshot.empty ? null : querySnapshot.docs.map(doc => doc.data());
         } catch (error) {

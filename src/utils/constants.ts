@@ -6,3 +6,5 @@ export const DEFAULT_SORT_BY = 'timestamp';
 export const DEFAULT_LIMIT = 250;
 export const MAINTENANCE_MODE = true;
 export const SESSION_EXPIRY_HOURS = 8;
+export const FERRY_AUTH_TOKEN_COLLECTION = 'ferryAuthTokens';
+export const CURRENT_TOKEN = 'currentToken';

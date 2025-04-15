@@ -1,4 +1,5 @@
-import { BasicUserModel } from './../models/BasicUserModel';
+import { FirebaseCollections } from '../enums/FirebaseCollections';
+import { UserTypes } from '../enums/UserTypes';
 import { AccessControlService } from './accessControlService';
 import { AgencyService } from './agencyService';
 import { UserBalance } from '../models/UserBalance/UserBalance';
@@ -13,7 +14,7 @@ const db = admin.firestore();
 export class UserBalanceService {
 
     private static async getUserInternal(userId: string): Promise<UserModel | null> {
-        const userDoc = await db.collection('users').doc(userId).get();
+        const userDoc = await db.collection(FirebaseCollections.users).doc(userId).get();
         return userDoc.exists ? (userDoc.data() as UserModel) : null;
     }
 
@@ -29,12 +30,12 @@ export class UserBalanceService {
     static async getUserBalanceData(userId: string): Promise<UserBalance | null> {
         try {
             const user = await this.getUserInternal(userId);
-            if (!user || user.access_level === 'admin') {
+            if (!user || user.access_level === UserTypes.ADMIN) {
                 return null;
             }
     
             const walletId = await this.getEffectiveUserWalletId(user);
-            const balanceDoc = await db.collection('user_balance').doc(walletId).get();
+            const balanceDoc = await db.collection(FirebaseCollections.user_balance).doc(walletId).get();
             
             if (!balanceDoc.exists) {
                 return {
@@ -53,12 +54,12 @@ export class UserBalanceService {
         }
     };
 
-    private static async getEffectiveUserWalletId(user: BasicUserModel): Promise<string> {
+    private static async getEffectiveUserWalletId(user: UserModel): Promise<string> {
         try {
             const accessLevel = await accessControlService.getAccessControl(user.access_level);
     
             if (
-                user.type === 'SUBAGENT' &&
+                user.type === UserTypes.SUBAGENT &&
                 accessLevel?.isSharedWallet === true
             ) {
                 const userIdLower = user.id.toLowerCase();
