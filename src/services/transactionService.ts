@@ -34,7 +34,7 @@ export async function commitTransaction({
       userId,
       created_by: createdBy,
       user_name: userName,
-      amount: -Math.abs(amount), // 💸 ensuring it's negative
+      amount: -Math.abs(amount), // ensuring it's negative
       base_amount: -Math.abs(amount),
       currency,
       type,

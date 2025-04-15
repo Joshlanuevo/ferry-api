@@ -24,7 +24,7 @@ export async function getSecretKey(): Promise<CryptographyKey> {
 
   const keyBuffer = await sodium.sodium_hex2bin(secretKeyHex);
 
-  // ✅ Construct CryptographyKey from buffer
+  // Construct CryptographyKey from buffer
   return new CryptographyKey(keyBuffer);
 }
 
