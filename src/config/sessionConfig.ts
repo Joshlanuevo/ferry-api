@@ -9,7 +9,7 @@ export const configureSession = () => {
   const isDevelopment = process.env.NODE_ENV === 'development';
   const isLambda = !!process.env.AWS_LAMBDA_FUNCTION_NAME;
 
-  // ✅ Configure AWS region globally
+  // Configure AWS region globally
   if (isLambda && process.env.AWS_REGION) {
     AWS.config.update({
       region: process.env.AWS_REGION,
