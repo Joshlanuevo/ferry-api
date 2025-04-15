@@ -1,4 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
+import { decryptMessage } from '../utils/encryption';
+import logger from '../utils/logger';
 
 // Extend the Request interface to include browserUid
 declare global {
@@ -8,9 +10,6 @@ declare global {
     }
   }
 }
-
-import { decryptMessage } from '../utils/encryption';
-import logger from '../utils/logger';
 
 export const validateSessionKey = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   const trackingId = req.headers['x-tracking-id'] || 'no-tracking-id';

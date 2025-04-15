@@ -1,4 +1,3 @@
-
 import { SodiumPlus, CryptographyKey } from 'sodium-plus';
 import { Buffer } from 'buffer';
 import dotenv from 'dotenv';

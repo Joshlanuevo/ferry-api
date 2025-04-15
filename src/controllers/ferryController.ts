@@ -81,20 +81,10 @@ export class FerryController {
     try {
       // Validate request data
       FerryController.validateCreateTicketRequest(req);
-
-      // Validate compute charges in session
-      if (!req.session?.ferryComputeCharges) {
-        throw new Error("No cached compute charges found. Please compute charges first.");
-      }
       
-      // Validate user is present in session (populated from headers)
-      if (!req.session?.user?.id) {
-        throw new Error("User authentication required. Please ensure x-user-id header is provided.");
-      }
-      
-      const cachedComputeCharges = req.session.ferryComputeCharges;
+      const cachedComputeCharges = req.session!.ferryComputeCharges;
       const total = await getVoyageTotalFare(cachedComputeCharges);
-      const userId = req.session.user.id;
+      const userId = req.session!.user!.id;
 
       // Log the total for verification
       logger.info({

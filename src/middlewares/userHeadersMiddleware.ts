@@ -5,39 +5,6 @@ import { sendResponse } from '../utils/response';
 import { getTrackingId } from './loggerMiddleware';
 import logger from '../utils/logger';
 
-export const extractUserFromHeaders = (req: Request, res: Response, next: NextFunction): void => {
-  const trackingId = req.headers['x-tracking-id'] || 'no-tracking-id';
-  const userId = req.headers['x-user-id'] as string;
-  const agentId = req.headers['x-agent-id'] as string;
-  const userName = req.headers['x-user-name'] as string;
-  
-  if (userId) {
-    // Add user info to session
-    if (!req.session) {
-      req.session = {} as any;
-    }
-    
-    req.session.user = {
-      id: userId,
-      agentId: agentId || '',
-      user_name: userName || '',
-    };
-    
-    logger.info({
-      message: 'User information extracted from headers',
-      trackingId,
-      userId,
-    });
-  } else {
-    logger.warn({
-      message: 'No user ID found in headers',
-      trackingId,
-    });
-  }
-  
-  next();
-};
-
 /**
  * Middleware to require admin permissions
  */
