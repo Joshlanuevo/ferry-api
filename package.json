@@ -16,6 +16,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.797.0",
     "@google-cloud/connect-firestore": "^3.0.0",
     "@google-cloud/firestore": "^7.11.0",
     "aws-lambda": "^1.0.7",

@@ -1,24 +1,56 @@
 import express from 'express';
 import session from 'express-session';
 import dotenv from 'dotenv';
+import DynamoDBStore from 'connect-dynamodb';
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import * as middlewares from './middlewares';
+import errorHandler from './middlewares/errorHandler';
 import routes from './routes';
-import { errorLoggerMiddleware, loggerMiddleware } from './middlewares/loggerMiddleware';
-import { configureSession } from './config/sessionConfig';
 
 dotenv.config();
 
 const app = express();
 
-if (!process.env.SESSION_SECRET) {
-  throw new Error('SESSION_SECRET is not defined in environment variables.');
-}
-
-// Session Middleware
-app.use(session(configureSession()));
-
 // Middleware
 app.use(express.json());
-app.use(loggerMiddleware);
+
+app.use(middlewares.securityMiddleware.helmetMiddleware);
+app.use(middlewares.securityMiddleware.corsMiddleware);
+app.use(middlewares.securityMiddleware.ipFilterMiddleware);
+app.use(middlewares.beforeRoutesMiddleware.injectTrackingId);
+app.use(middlewares.beforeRoutesMiddleware.requestLogger);
+app.use(middlewares.beforeRoutesMiddleware.rateLimiter);
+
+// Configure session for serverless environment
+const DynamoStore = DynamoDBStore(session);
+const dynamoDbClient = new DynamoDBClient({
+  region: process.env.AWS_REGION || 'us-east-1',
+});
+
+const isServerless = process.env.IS_OFFLINE !== 'true' && process.env.AWS_EXECUTION_ENV !== undefined;
+
+// Use different session storage based on environment
+const sessionConfig: session.SessionOptions = {
+  secret: process.env.SESSION_SECRET || 'my-secret-key',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+  },
+};
+
+// Use DynamoDB session store in serverless environment
+if (isServerless) {
+  sessionConfig.store = new DynamoStore({
+    client: dynamoDbClient,
+    table: `${process.env.SERVICE_NAME || 'attractions-api'}-${process.env.NODE_ENV || 'dev'}-sessions`,
+    readCapacityUnits: 1,
+    writeCapacityUnits: 1,
+  });
+}
+
+app.use(session(sessionConfig));
 
 // Routes
 app.use('/api', routes);
@@ -28,8 +60,11 @@ app.get('/', (req, res) => {
   res.json({ message: 'Welcome to the Ferry API' });
 });
 
-// Error handling middleware
-app.use(errorLoggerMiddleware);
+app.use(middlewares.beforeRoutesMiddleware.validateRoute);
+app.use(middlewares.beforeRoutesMiddleware.validateMethod);
+
+app.use(middlewares.afterRoutesMiddleware.responseLogger);
+app.use(errorHandler.errorLogger);
 
 declare module 'express-session' {
   interface SessionData {
