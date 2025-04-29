@@ -3,9 +3,13 @@ node_modules/
 
 # Environment variables
 .env
+.env.local
+.env.*.local
 
-# Serverless Framework
-.serverless/
+# Build files
+dist/
+out/
+*.tsbuildinfo
 
 src/lib/Firebase/credentials.json
 src/lib/Firebase/credentials-live.json

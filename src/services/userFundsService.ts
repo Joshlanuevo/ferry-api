@@ -1,7 +1,6 @@
 import { FundsOnHold } from "../models/FundsOnHold/FundsOnHold";
 import { FirebaseCollections } from "../enums/FirebaseCollections";
 import admin from "../utils/firebase";
-import logger from "../utils/logger";
 
 const db = admin.firestore();
 
@@ -16,7 +15,6 @@ const db = admin.firestore();
 export async function getUserFundsOnHold(
     userId: string, 
     currency: string,
-    trackingId?: string
 ): Promise<number> {
     if (!userId) {
       throw new Error("User ID is required to get funds on hold.");
@@ -41,23 +39,15 @@ export async function getUserFundsOnHold(
         }
       });
       
-      logger.info({
-        message: 'Retrieved user funds on hold',
-        trackingId,
-        userId,
-        totalOnHold
-      });
-      
       return totalOnHold;
     } catch (error) {
-      logger.error({
-        message: 'Error retrieving user funds on hold',
-        trackingId,
+      console.log('Error retrieving user funds on hold', {
         userId,
         error: error instanceof Error ? error.message : String(error)
       });
       throw error;
     }
+    
 }
   
   /**
@@ -75,25 +65,14 @@ export async function checkSufficientOnHoldBalance(
     currentBalance: number,
     pendingDebit: number,
     currency: string,
-    trackingId?: string
 ): Promise<boolean> {
     try {
       // Get funds on hold
-      const fundsOnHold = await getUserFundsOnHold(userId, currency, trackingId);
+      const fundsOnHold = await getUserFundsOnHold(userId, currency);
       
       if (fundsOnHold > 0) {
         // Calculate next balance after pending transaction and on-hold funds
         const nextBalance = currentBalance - pendingDebit - fundsOnHold;
-        
-        logger.info({
-          message: 'Checking balance with on-hold funds',
-          trackingId,
-          userId,
-          currentBalance,
-          pendingDebit,
-          fundsOnHold,
-          nextBalance
-        });
         
         if (nextBalance < 0) {
           return false;
@@ -102,9 +81,7 @@ export async function checkSufficientOnHoldBalance(
       
       return true;
     } catch (error) {
-      logger.error({
-        message: 'Error checking sufficient on-hold balance',
-        trackingId,
+      console.log('Error checking sufficient on-hold balance', {
         userId,
         error: error instanceof Error ? error.message : String(error)
       });

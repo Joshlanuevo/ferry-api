@@ -11,8 +11,16 @@ dotenv.config();
 
 const app = express();
 
-// Middleware
+// Helpers to detect environment
+// Note: `isOffline` is defined for potential future use (e.g., custom local dev behavior), 
+// but currently not used because session setup only depends on `isLambda`.
+const isOffline = process.env.IS_OFFLINE === 'true';
+const isLambda = !!process.env.AWS_LAMBDA_FUNCTION_NAME;
+const isProduction = process.env.NODE_ENV === 'production';
+
+// Middleware to parse JSON and URL-encoded bodies
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 app.use(middlewares.securityMiddleware.helmetMiddleware);
 app.use(middlewares.securityMiddleware.corsMiddleware);
@@ -20,31 +28,31 @@ app.use(middlewares.securityMiddleware.ipFilterMiddleware);
 app.use(middlewares.beforeRoutesMiddleware.injectTrackingId);
 app.use(middlewares.beforeRoutesMiddleware.requestLogger);
 app.use(middlewares.beforeRoutesMiddleware.rateLimiter);
+app.use(middlewares.beforeRoutesMiddleware.validateRoute);
+app.use(middlewares.beforeRoutesMiddleware.validateMethod);
+app.use(middlewares.afterRoutesMiddleware.responseLogger);
 
-// Configure session for serverless environment
-const DynamoStore = DynamoDBStore(session);
-const dynamoDbClient = new DynamoDBClient({
-  region: process.env.AWS_REGION || 'us-east-1',
-});
-
-const isServerless = process.env.IS_OFFLINE !== 'true' && process.env.AWS_EXECUTION_ENV !== undefined;
-
-// Use different session storage based on environment
+// Session configuration
 const sessionConfig: session.SessionOptions = {
   secret: process.env.SESSION_SECRET || 'my-secret-key',
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: process.env.NODE_ENV === 'production',
+    secure: isProduction, // Use secure cookies only in production
     maxAge: 24 * 60 * 60 * 1000, // 24 hours
   },
 };
 
-// Use DynamoDB session store in serverless environment
-if (isServerless) {
+// Use DynamoDB-backed session store only in Lambda environment
+if (isLambda) {
+  const DynamoStore = DynamoDBStore(session);
+  const dynamoDbClient = new DynamoDBClient({
+    region: process.env.AWS_REGION || 'us-east-1',
+  });
+
   sessionConfig.store = new DynamoStore({
     client: dynamoDbClient,
-    table: `${process.env.SERVICE_NAME || 'attractions-api'}-${process.env.NODE_ENV || 'dev'}-sessions`,
+    table: `${process.env.SERVICE_NAME || 'ferry-api'}-${process.env.NODE_ENV || 'dev'}-sessions`,
     readCapacityUnits: 1,
     writeCapacityUnits: 1,
   });
@@ -60,10 +68,6 @@ app.get('/', (req, res) => {
   res.json({ message: 'Welcome to the Ferry API' });
 });
 
-app.use(middlewares.beforeRoutesMiddleware.validateRoute);
-app.use(middlewares.beforeRoutesMiddleware.validateMethod);
-
-app.use(middlewares.afterRoutesMiddleware.responseLogger);
 app.use(errorHandler.errorLogger);
 
 declare module 'express-session' {

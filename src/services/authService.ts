@@ -27,19 +27,11 @@ class AuthService {
         try {
             const ferryAuthUrl = getApiUrl('ferryAuth');
             const requestModel = new FerryAuthRequest();
-
-            console.log(`Requesting auth token from ${ferryAuthUrl}`);
-            console.log("Using client_id:", requestModel.client_id);
-            console.log("Using client_secret:", requestModel.client_secret ? '*****' : 'Not Set');
-            console.log("Auth request payload:", JSON.stringify(requestModel.toJSON(), null, 2));
-            console.log("Auth endpoint:", ferryAuthUrl);
             
             const result = await axios.post(ferryAuthUrl, requestModel.toJSON(), {
                 headers: { 'Content-Type': 'application/json' },
                 timeout: API_TIMEOUT,
             });       
-
-            console.log("Full auth response:", JSON.stringify(result.data));
 
             // Check if result.data has error_message (similar to PHP implementation)
             if (getValue(result, "error_message")) {

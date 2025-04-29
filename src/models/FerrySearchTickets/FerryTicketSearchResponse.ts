@@ -5,6 +5,5 @@ export interface FerrySearchTicketsResponse {
     meta: {
       totalResults: number;
       requestTimestamp: string;
-      trackingId: string;
     };
 }

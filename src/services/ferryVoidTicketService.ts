@@ -1,7 +1,7 @@
 import axios from 'axios';
 import dotenv from 'dotenv';
+import { FerryErrorResponse } from '../models/FerryErrorResponse';
 import { getApiUrl } from '../config/ferryApiConfig';
-import logger from '../utils/logger';
 
 dotenv.config();
 
@@ -19,7 +19,6 @@ export async function voidTicket(
   ticketId: string, 
   remarks: string, 
   token: string,
-  trackingId: string,
 ): Promise<boolean> {
   try {
     const url = getApiUrl('voidTicket');
@@ -34,20 +33,10 @@ export async function voidTicket(
       },
       {
         headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'X-Request-ID': trackingId,
           'Authorization': `Bearer ${token}`,
         }
       }
     );
-
-    logger.info({
-      message: 'Ferry void ticket API response',
-      trackingId,
-      ticketId,
-      response: response.data
-    });
 
     // Check for errors in the response
     if (response.data.status) {
@@ -57,21 +46,14 @@ export async function voidTicket(
 
     return response.data.success === true;
   } catch (error) {
-    logger.error({
-      message: 'Error voiding ferry ticket',
-      trackingId,
-      ticketId,
-      error: error instanceof Error ? error.message : String(error)
-    });
-    
-    if (axios.isAxiosError(error) && error.response?.data) {
-      logger.error({
-        message: 'Ferry void API error response',
-        trackingId,
-        errorData: error.response.data
-      });
+    if (axios.isAxiosError(error)) {
+      const errorData = error.response?.data;
+      if (errorData && errorData.error) {
+        const errorResponse = new FerryErrorResponse(errorData);
+        throw new Error(`Error: ${errorResponse.title} - ${errorResponse.detail}`);
+      }
+      throw new Error(`API request failed: ${error.message} - ${JSON.stringify(error.response?.data || {})}`);
     }
-    
     throw error;
   }
 }

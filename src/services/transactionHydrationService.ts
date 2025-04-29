@@ -2,7 +2,6 @@ import { FirebaseLib } from "../lib/FirebaseLib";
 import { FirebaseCollections } from "../enums/FirebaseCollections";
 import { MeiliWrapper } from "../utils/meiliSearchWrapper";
 import { isFullArray } from '../utils/helpers';
-import logger from "../utils/logger";
 
 /**
  * Helper function to get a value from an object by key
@@ -44,8 +43,7 @@ export async function hydrateTransactions(
     try {
       do {
         // Log the current batch fetch
-        logger.info({
-          message: `Fetching batch from ${collection} with offset ${offset}`,
+        console.log(`Fetching batch from ${collection} with offset ${offset}`, {
           collection,
           offset,
           limit
@@ -62,8 +60,7 @@ export async function hydrateTransactions(
   
         // Break if no results
         if (!isFullArray(result)) {
-          logger.info({
-            message: 'No more documents to process',
+          console.log('No more documents to process', {
             collection
           });
           break;
@@ -81,8 +78,7 @@ export async function hydrateTransactions(
   
         // Break if no timestamp or if we're at the same offset (no progress)
         if (!lastTimestamp || (offset !== null && lastTimestamp === offset)) {
-          logger.info({
-            message: 'Reached end of pagination or duplicate timestamp',
+          console.log('Reached end of pagination or duplicate timestamp', {
             collection,
             lastTimestamp
           });
@@ -93,8 +89,7 @@ export async function hydrateTransactions(
         offset = lastTimestamp;
   
         // Write to Meilisearch
-        logger.info({
-          message: `Writing ${processedResults.length} documents to Meilisearch`,
+        console.log(`Writing ${processedResults.length} documents to Meilisearch`, {
           collection,
           count: processedResults.length
         });
@@ -107,16 +102,14 @@ export async function hydrateTransactions(
         
       } while (true);
   
-      logger.info({
-        message: 'Transaction hydration completed successfully',
+      console.log('Transaction hydration completed successfully', {
         collection,
         batches: output.length
       });
   
       return output;
     } catch (error) {
-      logger.error({
-        message: 'Error during transaction hydration',
+      console.error('Error during transaction hydration', {
         collection,
         error: error instanceof Error ? error.message : String(error)
       });

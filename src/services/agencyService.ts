@@ -16,23 +16,23 @@ export class AgencyService {
    */
     async getAgency(agencyId?: string): Promise<AgencyModel | null> {
         if (!agencyId) {
-        return null;
+            return null;
         }
     
         try {
-        const model = new AgencyModel();
-        model.id = agencyId;
-        
-        const data = await model.get();
-        
-        if (isFullArray(data)) {
-            return model;
-        }
-        
-        return null;
+            const model = new AgencyModel();
+            model.id = agencyId;
+            
+            const data = await model.get();
+            
+            if (isFullArray(data)) {
+                return model;
+            }
+            
+            return null;
         } catch (error) {
-        console.error('Error getting agency:', error);
-        return null;
+            console.error('Error getting agency:', error);
+            return null;
         }
     }
 }

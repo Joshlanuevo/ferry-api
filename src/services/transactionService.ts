@@ -2,7 +2,6 @@ import { v4 as uuidv4 } from 'uuid';
 import { FirebaseCollections } from '../enums/FirebaseCollections';
 import { TransactionTypes } from '../enums/TransactionTypes';
 import admin from '../utils/firebase';
-import logger from '../utils/logger';
 
 const db = admin.firestore();
 
@@ -68,8 +67,7 @@ export async function getTransactionData(transactionId: string): Promise<any> {
     
     return transactionSnapshot.data();
   } catch (error) {
-    logger.error({
-      message: 'Error getting transaction data',
+    console.error('Error getting transaction data', {
       transactionId,
       error: error instanceof Error ? error.message : String(error)
     });
@@ -87,15 +85,13 @@ export async function removeFromBookings(bookingId: string): Promise<boolean> {
       .doc(bookingId)
       .delete();
     
-    logger.info({
-      message: 'Booking removed from ferry_bookings',
+    console.log('Booking removed from ferry_bookings', {
       bookingId
     });
     
     return true;
   } catch (error) {
-    logger.error({
-      message: 'Error removing booking from ferry_bookings',
+    console.error('Error removing booking from ferry_bookings', {
       bookingId,
       error: error instanceof Error ? error.message : String(error)
     });

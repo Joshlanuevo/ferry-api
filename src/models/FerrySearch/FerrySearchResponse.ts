@@ -5,6 +5,5 @@ export type FerrySearchResponse = {
     meta?: {
         totalResults: number;
         requestTimestamp: string;
-        trackingId: string;
     };
 }

@@ -1,10 +1,10 @@
 import axios from 'axios';
 import dotenv from 'dotenv';
+import { FerryErrorResponse } from '../models/FerryErrorResponse';
 import { FerryTicketRequest } from '../models/FerryTicket/FerryTicketRequest';
 import { FerryTicketResponse } from '../models/FerryTicket/FerryTicketResponse';
 import { FerrySearchTicketsRequest } from '../models/FerrySearchTickets/FerrySearchTicketsRequest';
 import { getApiUrl } from '../config/ferryApiConfig';
-import logger from '../utils/logger';
 
 dotenv.config();
 
@@ -14,30 +14,15 @@ dotenv.config();
 export const createFerryTicket = async (
   request: FerryTicketRequest,
   token: string,
-  trackingId: string,
 ): Promise<FerryTicketResponse> => {
   try {
     const url = getApiUrl('createFerryTicket');
     const timeout = parseInt(process.env.API_TIMEOUT || '30000', 10);
 
-    // Log external API request
-    logger.info({
-      message: `API Request: ${url}`,
-      trackingId,
-      method: 'POST',
-      url,
-      data: JSON.stringify(request)  // Log the request data for debugging
-    });
-
-    const startTime = Date.now();
-
     const response = await axios({
       method: 'POST',
       url,
       headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'X-Request-ID': trackingId,
         'Authorization': `Bearer ${token}`,
       },
       data: request,
@@ -45,24 +30,13 @@ export const createFerryTicket = async (
       validateStatus: status => status < 500, // Accept only 2xx responses
     });
 
-    const responseTime = Date.now() - startTime;
-    
-    // Log response
-    logger.info({
-      message: `API Response: ${url}`,
-      trackingId,
-      statusCode: response.status,
-      responseTime: `${responseTime}ms`,
-      responseData: response.data,
-    });
-
-      // Better handling of error responses
-      if (response.status >= 400) {
-      const errorData = response.data || {};
-      const errorMessage = errorData.error_message || 
-        (errorData.title ? `${errorData.title}: ${errorData.detail || ''}` : 'Unknown error');
-        throw new Error(`API Error (${response.status}): ${errorMessage}`);
-      }
+    // Better handling of error responses
+    if (response.status >= 400) {
+    const errorData = response.data || {};
+    const errorMessage = errorData.error_message || 
+      (errorData.title ? `${errorData.title}: ${errorData.detail || ''}` : 'Unknown error');
+      throw new Error(`API Error (${response.status}): ${errorMessage}`);
+    }
 
     // Handle API error messages
     if (response.data && response.data.error_message) {
@@ -84,28 +58,16 @@ export const createFerryTicket = async (
       ...response.data,
       meta: {
         requestTimestamp: new Date().toISOString(),
-        trackingId,
       }
     };
   } catch (error) {
-    logger.error({
-      message: 'API request failed',
-      trackingId,
-      error: error instanceof Error ? error.message : String(error),
-      request: JSON.stringify(request),
-    });
-    
     if (axios.isAxiosError(error)) {
-      const status = error.response?.status;
-      const responseData = error.response?.data;
-      
-      if (status === 401) {
-        throw new Error('Authentication failed: Invalid or expired token');
-      } else if (status === 400) {
-        throw new Error(`Bad request: ${JSON.stringify(error.response?.data)}`);
+      const errorData = error.response?.data;
+      if (errorData && errorData.error) {
+        const errorResponse = new FerryErrorResponse(errorData);
+        throw new Error(`Error: ${errorResponse.title} - ${errorResponse.detail}`);
       }
-      // Include detailed error information
-      throw new Error(`API Error (${status || 'unknown'}): ${JSON.stringify(responseData) || error.message}`);
+      throw new Error(`API request failed: ${error.message} - ${JSON.stringify(error.response?.data || {})}`);
     }
     throw error;
   }
@@ -116,8 +78,7 @@ export const createFerryTicket = async (
  */
 export const searchFerryTickets = async (
     searchParams: FerrySearchTicketsRequest,
-    trackingId: string,
-  ): Promise<any> => {
+): Promise<any> => {
     try {
       const url = getApiUrl('searchTickets');
       const timeout = parseInt(process.env.API_TIMEOUT || '30000', 10);
@@ -130,41 +91,18 @@ export const searchFerryTickets = async (
         searchParams.dateTo = new Date().toISOString().split('T')[0];
       }
   
-      // Log the request
-      logger.info({
-        message: `API Request: ${url}`,
-        trackingId,
-        method: 'POST',
-        url,
-        data: searchParams,
-      });
-
-      const startTime = Date.now(); // Store start time before request
-  
       const response = await axios({
         method: 'POST',
         url,
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
-          'X-Request-ID': trackingId,
         },
         data: searchParams,
         timeout,
         validateStatus: status => status < 500,
       });
-
-      const responseTime = Date.now() - startTime; // Calculate actual response time
   
-      // Log response
-      logger.info({
-        message: `API Response: ${url}`,
-        trackingId,
-        statusCode: response.status,
-        responseTime: `${responseTime}ms`,
-        responseData: response.data,
-      });
-
       if (response.status >= 400) {
         throw new Error(`API Error (${response.status}): ${JSON.stringify(response.data)}`);
       }
@@ -185,30 +123,26 @@ export const searchFerryTickets = async (
       } else if (response.data.results && Array.isArray(response.data.results)) {
         ticketsData = response.data.results;
       } else {
-        logger.error({
-          message: 'Unexpected API response format',
-          trackingId,
+        console.log('Unexpected API response format', {
           responseData: response.data
         });
-        throw new Error("Invalid response format from Barkota API. Expected data array.");
+        throw new Error("Invalid response format from Barkota API. Expected data array.");        
       }
   
       return ticketsData;
     } catch (error) {
-      logger.error({
-        message: 'Ticket search failed',
-        trackingId,
+      console.log('Ticket search failed', {
         error: error instanceof Error ? error.message : String(error),
         searchParams: JSON.stringify(searchParams)
       });
-      throw error;
+      throw error;      
     }
   };
 
 /**
  * Gets the latest ticket
  */
-export const getLatestTicket = async (trackingId: string): Promise<any[]> => {
+export const getLatestTicket = async (): Promise<any[]> => {
   try {
     // Using empty search params will get all recent tickets
     const searchParams: FerrySearchTicketsRequest = {
@@ -216,7 +150,7 @@ export const getLatestTicket = async (trackingId: string): Promise<any[]> => {
       dateTo: new Date().toISOString().split('T')[0]
     };
 
-    const tickets = await searchFerryTickets(searchParams, trackingId);
+    const tickets = await searchFerryTickets(searchParams);
     
     if (!tickets || tickets.length === 0) {
       throw new Error("No tickets found.");
@@ -242,13 +176,11 @@ export const getLatestTicket = async (trackingId: string): Promise<any[]> => {
     
     return ticketGroupsArray[0];
   } catch (error) {
-    logger.error({
-      message: 'Failed to get latest ticket',
-      trackingId,
+    console.log('Failed to get latest ticket', {
       error: error instanceof Error ? error.message : String(error)
     });
     throw error;
-  }
+  }  
 };
 
 /**

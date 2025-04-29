@@ -15,7 +15,6 @@ export interface FerryComputeChargesResponse {
     // Metadata for the response
     meta?: {
       requestTimestamp: string;
-      trackingId: string;
     };
 }
   

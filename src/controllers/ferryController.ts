@@ -13,8 +13,6 @@ import { hydrateTransactions } from '../services/transactionHydrationService';
 import { getFerryPrintUrl } from '../services/ferryGetPrintUrlService';
 import { isAdmin } from '../utils/user';
 import { sendResponse } from '../utils/response';
-import { getTrackingId } from '../middlewares/loggerMiddleware';
-import logger from '../utils/logger';
 import { TransactionTypes } from '../enums/TransactionTypes';
 import { FirebaseCollections } from '../enums/FirebaseCollections';
 import { handleErrorResponse } from '../middlewares/handleErrorResponse';
@@ -26,13 +24,15 @@ export class FerryController {
    * Search for available ferry trips
    */
   static async search(req: Request, res: Response): Promise<void> {
-    const trackingId = getTrackingId(req);
     
     try {
       const token = await AuthService.getToken();
-      const results = await fetchFerryData(req.body, token, trackingId);
+      const results = await fetchFerryData(req.body, token);
       sendResponse(req, res, true, 200, 'Ferry search completed successfully', results);
     } catch (error) {
+      const trackingId = (Array.isArray(req.headers["x-correlation-id"])
+        ? req.headers["x-correlation-id"][0]
+        : req.headers["x-correlation-id"]) ?? '';
       handleErrorResponse(req, res, error, trackingId, 'Ferry search');
     }
   }
@@ -41,11 +41,10 @@ export class FerryController {
    * Compute charges for a ferry booking
    */
   static async computeCharges(req: Request, res: Response): Promise<void> {
-    const trackingId = getTrackingId(req);
     
     try {
       const token = await AuthService.getToken();
-      const results = await computeFerryCharges(req.body, token, trackingId);
+      const results = await computeFerryCharges(req.body, token);
       
       // Store compute charges result in req.session for later use
       if (req.session) {
@@ -54,6 +53,9 @@ export class FerryController {
 
       sendResponse(req, res, true, 200, 'Ferry charges computed successfully', results);
     } catch (error) {
+      const trackingId = (Array.isArray(req.headers["x-correlation-id"])
+        ? req.headers["x-correlation-id"][0]
+        : req.headers["x-correlation-id"]) ?? '';
       handleErrorResponse(req, res, error, trackingId, 'Compute charges');
     }
   }
@@ -62,12 +64,14 @@ export class FerryController {
    * Hold a ferry booking (currently in maintenance mode)
    */
   static async holdBooking(req: Request, res: Response): Promise<void> {
-    const trackingId = getTrackingId(req);
     
     try {
       // Return maintenance mode message
       sendResponse(req, res, false, 402, "Ferry Module Is Under Maintenance Mode. We will notify once it's back.", null);
     } catch (error) {
+      const trackingId = (Array.isArray(req.headers["x-correlation-id"])
+        ? req.headers["x-correlation-id"][0]
+        : req.headers["x-correlation-id"]) ?? '';
       handleErrorResponse(req, res, error, trackingId, 'Hold booking');
     }
   }
@@ -76,7 +80,6 @@ export class FerryController {
    * Create a ferry ticket
    */
   static async createTicket(req: Request, res: Response): Promise<void> {
-    const trackingId = getTrackingId(req);
     
     try {
       // Validate request data
@@ -86,16 +89,8 @@ export class FerryController {
       const total = await getVoyageTotalFare(cachedComputeCharges);
       const userId = req.session!.user!.id;
 
-      // Log the total for verification
-      logger.info({
-        message: 'Total fare calculated',
-        trackingId,
-        total,
-        computeCharges: cachedComputeCharges,
-      });
-
       // Check user balance
-      const { user, currency } = await FerryController.checkUserBalanceForTicket(userId, total, trackingId);
+      const { user, currency } = await FerryController.checkUserBalanceForTicket(userId, total);
 
       // Get token for API authentication
       const token = await AuthService.getToken();
@@ -103,7 +98,7 @@ export class FerryController {
       try {
         // Create the ticket
         const { printUrl, ticketDataArray, confirmationNumber } = 
-          await FerryController.executeTicketCreation(req.body, token, trackingId);
+          await FerryController.executeTicketCreation(req.body, token);
         
         // Commit the transaction
         await commitTransaction({
@@ -131,16 +126,16 @@ export class FerryController {
         });
       } catch (ticketError) {
         // Enhanced error handling for ticket creation failure
-        logger.error({
-          message: 'Error during ticket creation or processing',
-          trackingId,
+        console.log('Error during ticket creation or processing', {
           error: ticketError instanceof Error ? ticketError.message : String(ticketError),
           request: req.body,
         });
-        
         throw new Error(`Failed to create ticket: ${ticketError instanceof Error ? ticketError.message : 'Unknown error'}`);
       }
     } catch (error) {
+        const trackingId = (Array.isArray(req.headers["x-correlation-id"])
+        ? req.headers["x-correlation-id"][0]
+        : req.headers["x-correlation-id"]) ?? '';
       handleErrorResponse(req, res, error, trackingId, 'Create ticket');
     }
   }
@@ -166,24 +161,14 @@ export class FerryController {
     }
   }
   
-    
   /**
     * Check user balance for ticket purchase
     */
   private static async checkUserBalanceForTicket(
-      userId: string, 
-      total: number, 
-      trackingId: string,
+    userId: string, 
+    total: number, 
   ): Promise<{ user: any, currency: string }> {
     const user = await UserBalanceService.getUser(userId);
-  
-    logger.info({
-      message: 'User admin check',
-      trackingId,
-      userId,
-      isAdmin: isAdmin(user),
-      userObj: user,
-    });
   
     const currency = user?.currency || DEFAULT_CURRENCY;
   
@@ -198,21 +183,12 @@ export class FerryController {
         balance.total,
         total,
         currency,
-        trackingId,
       );
 
       if (!hasSufficientBalance) {
-        const fundsOnHold = await getUserFundsOnHold(userId, currency, trackingId);
+        const fundsOnHold = await getUserFundsOnHold(userId, currency);
         throw new Error(`Not enough credits for this transaction because ${fundsOnHold} ${currency} is still on hold.`);
       }
-
-      logger.info({
-        message: 'User balance check',
-        trackingId,
-        userId,
-        balance,
-        total,
-      }); 
     }
   
     return { user, currency };
@@ -222,12 +198,11 @@ export class FerryController {
   * Create ferry ticket
   */
   private static async executeTicketCreation(
-      requestBody: any,
-      token: string,
-      trackingId: string,
+    requestBody: any,
+    token: string,
   ): Promise<{ printUrl: string, ticketDataArray: any[], confirmationNumber: string }> {
     // Create the ferry ticket
-    const ticketResponse = await createFerryTicket(requestBody, token, trackingId);
+    const ticketResponse = await createFerryTicket(requestBody, token);
       
     if (!ticketResponse.printUrl) {
       throw new Error("No print URL found in the response.");
@@ -237,7 +212,7 @@ export class FerryController {
     await new Promise(resolve => setTimeout(resolve, TICKET_CREATION_WAIT_TIME_MS));
       
     // Get the latest ticket data
-    const ticketDataArray = await getLatestTicket(trackingId);
+    const ticketDataArray = await getLatestTicket();
 
     if (!ticketDataArray || ticketDataArray.length === 0) {
       throw new Error("No ticket data found after creation.");
@@ -258,15 +233,17 @@ export class FerryController {
    * Get ferry tickets based on search criteria
    */
   static async getTickets(req: Request, res: Response): Promise<void> {
-    const trackingId = getTrackingId(req);
     
     try {
       // Get token for API authentication
       const token = await AuthService.getToken();
-      const results = await fetchTicketData(req.body, token, trackingId);
+      const results = await fetchTicketData(req.body, token);
     
       sendResponse(req, res, true, 200, 'Ticket search completed successfully', results);
     } catch (error) {
+      const trackingId = (Array.isArray(req.headers["x-correlation-id"])
+        ? req.headers["x-correlation-id"][0]
+        : req.headers["x-correlation-id"]) ?? '';
       handleErrorResponse(req, res, error, trackingId, 'Get tickets');
     }
   }
@@ -275,7 +252,6 @@ export class FerryController {
    * Confirm a ferry booking
    */
   static async confirmBooking(req: Request, res: Response): Promise<void> {
-    const trackingId = getTrackingId(req);
     
     try {
       // Simple success response, matching the PHP implementation
@@ -283,6 +259,9 @@ export class FerryController {
         success: true,
       });
     } catch (error) {
+      const trackingId = (Array.isArray(req.headers["x-correlation-id"])
+        ? req.headers["x-correlation-id"][0]
+        : req.headers["x-correlation-id"]) ?? '';
       handleErrorResponse(req, res, error, trackingId, 'Confirm booking');
     }
   }
@@ -291,7 +270,6 @@ export class FerryController {
    * Void a ferry booking
    */
   static async voidBooking(req: Request, res: Response): Promise<void> {
-    const trackingId = getTrackingId(req);
     const transactionId = req.params.transactionId;
     
     try {
@@ -306,13 +284,6 @@ export class FerryController {
         throw new Error("Transaction not found");
       }
       
-      logger.info({
-        message: 'Found transaction data for void',
-        trackingId,
-        transactionId,
-        userId: transactionData.userId,
-      });
-      
       // Get user info
       const userId = req.session?.user?.id;
       if (!userId) throw new Error("User not authenticated. Please log in again.");
@@ -323,8 +294,7 @@ export class FerryController {
       await FerryController.processVoidBooking(
         transactionData, 
         isUserAdmin, 
-        req.body.remarks, 
-        trackingId, 
+        req.body.remarks,
         transactionId, 
         user,
       );
@@ -333,6 +303,9 @@ export class FerryController {
         status: true,
       });
     } catch (error) {
+      const trackingId = (Array.isArray(req.headers["x-correlation-id"])
+        ? req.headers["x-correlation-id"][0]
+        : req.headers["x-correlation-id"]) ?? '';
       handleErrorResponse(req, res, error, trackingId, 'Void booking');
     }
   }
@@ -343,8 +316,7 @@ export class FerryController {
   private static async processVoidBooking(
       transactionData: any, 
       isUserAdmin: boolean, 
-      remarks: string, 
-      trackingId: string, 
+      remarks: string,
       transactionId: string,
       user: any,
   ): Promise<void> {
@@ -359,7 +331,7 @@ export class FerryController {
       
       // Void each ticket in the transaction
       const voidRemarks = remarks || "Voided by user";
-      await FerryController.voidTickets(ticketDataArray, voidRemarks, token, trackingId);
+      await FerryController.voidTickets(ticketDataArray, voidRemarks, token);
       
       // Issue refund if user is not admin
       let isRefundSuccess = true;
@@ -388,7 +360,6 @@ export class FerryController {
       ticketDataArray: any[], 
       remarks: string, 
       token: string,
-      trackingId: string,
   ): Promise<void> {
       let allVoided = true;
       
@@ -397,21 +368,17 @@ export class FerryController {
         
         const bookingId = ticketData.barkotaBookingId;
         if (!bookingId) {
-          logger.warn({
-            message: 'Missing barkotaBookingId in ticket data',
-            trackingId,
+          console.log('Warning: Missing barkotaBookingId in ticket data', {
             ticketData,
           });
           continue;
         }
 
         // Call the void API
-        const voidResult = await voidTicket(bookingId, remarks, token, trackingId);
+        const voidResult = await voidTicket(bookingId, remarks, token);
         if (!voidResult) {
           allVoided = false;
-          logger.error({
-            message: 'Failed to void booking',
-            trackingId,
+          console.log('Error: Failed to void booking', {
             bookingId,
           });
         }
@@ -426,7 +393,6 @@ export class FerryController {
    * Hydrate transactions with additional data
    */
   static async hydrateTransactions(req: Request, res: Response): Promise<void> {
-    const trackingId = getTrackingId(req);
     
     try {
       // Check if user is admin
@@ -457,15 +423,6 @@ export class FerryController {
         };
       }
       
-      logger.info({
-        message: 'Starting transaction hydration',
-        trackingId,
-        collection,
-        key,
-        sortBy,
-        limit,
-      });
-      
       // Trigger the hydration process
       const result = await hydrateTransactions(
         collection as FirebaseCollections,
@@ -480,18 +437,10 @@ export class FerryController {
         totalDocuments: result.reduce((sum, batch) => sum + (batch.processedIds?.length || 0), 0),
       });
     } catch (error) {
-      const statusCode = error instanceof Error ? 400 : 500;
-      const message = statusCode === 400 && error instanceof Error
-        ? (error as Error).message
-        : `Internal server error. Please contact our administrator and present this tracking ID: ${trackingId}`;
-      
-      logger.error({
-        message: 'Transaction hydration failed',
-        trackingId,
-        error: error instanceof Error ? error.message : String(error)
-      });
-      
-      sendResponse(req, res, false, statusCode, message, error);
+      const trackingId = (Array.isArray(req.headers["x-correlation-id"])
+          ? req.headers["x-correlation-id"][0]
+          : req.headers["x-correlation-id"]) ?? '';
+      handleErrorResponse(req, res, error, trackingId, 'Hydrate Transaction');
     }
   }
 
@@ -499,7 +448,6 @@ export class FerryController {
    * View a ferry ticket
    */
   static async viewTicket(req: Request, res: Response): Promise<void> {
-    const trackingId = getTrackingId(req);
     const barkotaTransactionId = req.params.barkotaTransactionId;
     
     try {
@@ -512,12 +460,15 @@ export class FerryController {
       const token = await AuthService.getToken();
       
       // Get print URL
-      const printUrl = await getFerryPrintUrl(barkotaTransactionId, token, trackingId);
+      const printUrl = await getFerryPrintUrl(barkotaTransactionId, token);
       
       sendResponse(req, res, true, 200, 'Print URL retrieved successfully', {
         printUrl,
       });
     } catch (error) {
+      const trackingId = (Array.isArray(req.headers["x-correlation-id"])
+        ? req.headers["x-correlation-id"][0]
+        : req.headers["x-correlation-id"]) ?? '';
       handleErrorResponse(req, res, error, trackingId, 'View ticket');
     }
   }

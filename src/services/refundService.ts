@@ -2,7 +2,6 @@ import { v4 as uuidv4 } from 'uuid';
 import { FirebaseCollections } from '../enums/FirebaseCollections';
 import { TransactionTypes } from '../enums/TransactionTypes';
 import admin from '../utils/firebase';
-import logger from '../utils/logger';
 
 const db = admin.firestore();
 
@@ -56,19 +55,17 @@ export async function issueRefund({
         .doc(refundTransactionId)
         .set(refundTransaction);
         
-      logger.info({
-        message: 'Refund transaction created',
+      console.log('Info: Refund transaction created', {
         refundTransactionId,
         originalTransactionId: transactionId,
-        refundAmount
+        refundAmount,
       });
-      
+        
       return true;
     } catch (error) {
-      logger.error({
-        message: 'Error issuing refund',
+      console.log('Error: Error issuing refund', {
         transactionId,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       });
       return false;
     }

@@ -7,31 +7,12 @@ provider:
   stage: ${opt:stage, 'dev'}
   region: ap-southeast-1
   timeout: 120
-  environment:
-    NODE_ENV: ${self:provider.stage}
-    SESSION_SECRET: ${env:SESSION_SECRET}
-    FERRY_CLIENT_ID: ${env:FERRY_CLIENT_ID}
-    FERRY_PW: ${env:FERRY_PW}
-    FERRY_DEV_CLIENT_ID: ${env:FERRY_DEV_CLIENT_ID}
-    FERRY_DEV_PW: ${env:FERRY_DEV_PW}
-    DEV_FIREBASE_PROJECT_ID: ${env:DEV_FIREBASE_PROJECT_ID}
-    DEV_FIREBASE_PRIVATE_KEY: ${env:DEV_FIREBASE_PRIVATE_KEY}
-    DEV_FIREBASE_CLIENT_EMAIL: ${env:DEV_FIREBASE_CLIENT_EMAIL}
-    PROD_FIREBASE_PROJECT_ID: ${env:PROD_FIREBASE_PROJECT_ID}
-    PROD_FIREBASE_PRIVATE_KEY: ${env:PROD_FIREBASE_PRIVATE_KEY}
-    PROD_FIREBASE_CLIENT_EMAIL: ${env:PROD_FIREBASE_CLIENT_EMAIL}
-    LOG_LEVEL: ${env:LOG_LEVEL, 'info'}
   iamRoleStatements:
   - Effect: Allow
     Action:
-      - dynamodb:GetItem
-      - dynamodb:PutItem
-      - dynamodb:UpdateItem
-      - dynamodb:DeleteItem
-      - dynamodb:Query
-      - dynamodb:Scan
-  Resource:
-    - !GetAtt SessionsTable.Arn
+      - dynamodb:*
+    Resource:
+      - !GetAtt SessionsTable.Arn
 
 functions:
   api:
@@ -51,7 +32,7 @@ resources:
     SessionsTable:
       Type: AWS::DynamoDB::Table
       Properties:
-        TableName: ferry-api-sessions-${self:provider.stage}
+        TableName: ferry-api-sessions
         BillingMode: PAY_PER_REQUEST
         AttributeDefinitions:
           - AttributeName: id
@@ -63,19 +44,7 @@ resources:
           AttributeName: expires
           Enabled: true
 
-package:
-  individually: true
-  patterns:
-    - '!.git/**'
-    - '!node_modules/**'
-    - '!logs/**'
-    - 'node_modules/sodium-plus/**'
-    - 'node_modules/libsodium-wrappers/**'
-    - 'node_modules/firebase-admin/**'
-    - 'node_modules/bcrypt/**'
-
 plugins:
-  - serverless-http
   - serverless-offline
 
 custom:

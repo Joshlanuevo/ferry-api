@@ -3,6 +3,5 @@ export interface FerryTicketResponse {
     [key: string]: any;
     meta: {
       requestTimestamp: string;
-      trackingId: string;
     };
 }
