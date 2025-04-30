@@ -46,12 +46,11 @@ export class FerryController {
       const token = await AuthService.getToken();
       const results = await computeFerryCharges(req.body, token);
       
-      // Store compute charges result in req.session for later use
-      if (req.session) {
-        req.session.ferryComputeCharges = results;
-      }
-
-      sendResponse(req, res, true, 200, 'Ferry charges computed successfully', results);
+      // Store result in the response for later use in client
+      sendResponse(req, res, true, 200, 'Ferry charges computed successfully', {
+        ...results,
+        _computeChargesToken: Date.now(), // Optional: Add a timestamp for validity checks in client side
+      });
     } catch (error) {
       const trackingId = (Array.isArray(req.headers["x-correlation-id"])
         ? req.headers["x-correlation-id"][0]
@@ -82,12 +81,20 @@ export class FerryController {
   static async createTicket(req: Request, res: Response): Promise<void> {
     
     try {
+      // Get user ID from token
+      const userId = req.user?.userId;
+      if (!userId) throw new Error("User not authenticated. Please log in again.");
+      
       // Validate request data
       FerryController.validateCreateTicketRequest(req);
-      
-      const cachedComputeCharges = req.session!.ferryComputeCharges;
-      const total = await getVoyageTotalFare(cachedComputeCharges);
-      const userId = req.session!.user!.id;
+
+      // Get compute charges from request - client needs to send this back
+      const computeCharges = req.body.computeCharges;
+      if (!computeCharges) {
+        throw new Error("Missing compute charges data. Please compute charges first.");
+      }
+
+      const total = await getVoyageTotalFare(computeCharges);
 
       // Check user balance
       const { user, currency } = await FerryController.checkUserBalanceForTicket(userId, total);
@@ -111,7 +118,7 @@ export class FerryController {
           meta: {
             request: req.body,
             response: ticketDataArray,
-            compute_charges: cachedComputeCharges,
+            compute_charges: computeCharges,
             printUrl: printUrl,
             booking_reference_no: confirmationNumber,
           },
@@ -144,10 +151,6 @@ export class FerryController {
    * Validate request data for creating a ticket
    */
   private static validateCreateTicketRequest(req: Request): void {
-    if (!req.session?.ferryComputeCharges) {
-      throw new Error("No cached compute charges found. Please compute charges first.");
-    }
-  
     if (!req.body.contactInfo) {
       throw new Error("Missing contact information in request");
     }
@@ -156,7 +159,7 @@ export class FerryController {
       throw new Error("Missing or invalid passenger information in request");
     }
   
-    if (!req.session?.user?.id) {
+    if (!req.user?.userId) {
       throw new Error("User not authenticated. Please log in again.");
     }
   }
@@ -285,7 +288,7 @@ export class FerryController {
       }
       
       // Get user info
-      const userId = req.session?.user?.id;
+      const userId = req.user?.userId;
       if (!userId) throw new Error("User not authenticated. Please log in again.");
       
       const user = await UserBalanceService.getUser(userId);
@@ -396,7 +399,7 @@ export class FerryController {
     
     try {
       // Check if user is admin
-      const userId = req.session?.user?.id;
+      const userId = req.user?.userId;
       if (!userId) throw new Error("User not authenticated. Please log in again.");
       
       const user = await UserBalanceService.getUser(userId);
