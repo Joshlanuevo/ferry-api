@@ -5,7 +5,7 @@ import { computeFerryCharges } from '../services/ferryComputeChargesService';
 import { createFerryTicket, getLatestTicket, getVoyageTotalFare } from '../services/ferryCreateTicketService';
 import { UserBalanceService } from '../services/userBalanceService';
 import { commitTransaction, getTransactionData, removeFromBookings } from '../services/transactionService';
-import { checkSufficientOnHoldBalance, getUserFundsOnHold } from '../services/userFundsService';
+import { checkSufficientOnHoldBalance } from '../services/userFundsService';
 import { fetchTicketData } from '../services/ferryTicketSearchService';
 import { voidTicket } from '../services/ferryVoidTicketService';
 import { issueRefund } from '../services/refundService';
@@ -81,6 +81,8 @@ export class FerryController {
   static async createTicket(req: Request, res: Response): Promise<void> {
     
     try {
+        // Get token for API authentication
+      const token = await AuthService.getToken();
       // Get user ID from token
       const userId = req.user?.userId;
       if (!userId) throw new Error("User not authenticated. Please log in again.");
@@ -96,11 +98,46 @@ export class FerryController {
 
       const total = await getVoyageTotalFare(computeCharges);
 
-      // Check user balance
-      const { user, currency } = await FerryController.checkUserBalanceForTicket(userId, total);
+      // Get user balance data
+      const user = await UserBalanceService.getUser(userId);
+      if (!user) throw new Error("User not found");
 
-      // Get token for API authentication
-      const token = await AuthService.getToken();
+      const currency = user?.currency || DEFAULT_CURRENCY;
+
+      if (!isAdmin(user)) {
+        const userBalance = await UserBalanceService.getUserBalanceData(user.userId);
+        if (!userBalance) {
+          return sendResponse(req, res, false, 403, "Failed to retrieve user balance", {
+            error: "User balance not found",
+          });
+        }
+
+        const nextBalance = userBalance.total.amount - total;
+
+        console.log("Balance Check Log:", {
+          balance: userBalance.total.amount,
+          totalToDeduct: total,
+          resultingBalance: nextBalance,
+        });
+
+        if (nextBalance < 0) {
+          return sendResponse(req, res, false, 402, "User does not have enough balance", {
+            error: "User does not have enough balance",
+          });
+        }
+
+        const onHoldCheck = await checkSufficientOnHoldBalance(
+          user.userId,
+          { amount: nextBalance, currency },
+          true,
+        );
+
+        if (onHoldCheck !== true) {
+          const code = typeof onHoldCheck === 'object' && 'code' in onHoldCheck ? onHoldCheck.code : 402;
+          const error = typeof onHoldCheck === 'object' && 'error' in onHoldCheck ? onHoldCheck.error : "Unknown error";
+          return sendResponse(req, res, false, code, error, { error });
+        }
+      }
 
       try {
         // Create the ticket
@@ -109,11 +146,12 @@ export class FerryController {
         
         // Commit the transaction
         await commitTransaction({
-          userId: user?.id || '',
+          userId: user.id,
+          transactionId: confirmationNumber,
           amount: total, // this will be auto-negated in commitTransaction
           currency: currency,
           type: TransactionTypes.ferry,
-          createdBy: user?.id || '',
+          createdBy: user.id,
           userName: `${user?.first_name} ${user?.last_name}`,
           meta: {
             request: req.body,
@@ -163,40 +201,7 @@ export class FerryController {
       throw new Error("User not authenticated. Please log in again.");
     }
   }
-  
-  /**
-    * Check user balance for ticket purchase
-    */
-  private static async checkUserBalanceForTicket(
-    userId: string, 
-    total: number, 
-  ): Promise<{ user: any, currency: string }> {
-    const user = await UserBalanceService.getUser(userId);
-  
-    const currency = user?.currency || DEFAULT_CURRENCY;
-  
-    if (!isAdmin(user)) {
-      const balance = await UserBalanceService.getUserBalanceData(userId);
-      if (!balance || balance.total < total) {
-        throw new Error("Insufficient balance to proceed with ticket purchase.");
-      }
 
-      const hasSufficientBalance = await checkSufficientOnHoldBalance(
-        userId,
-        balance.total,
-        total,
-        currency,
-      );
-
-      if (!hasSufficientBalance) {
-        const fundsOnHold = await getUserFundsOnHold(userId, currency);
-        throw new Error(`Not enough credits for this transaction because ${fundsOnHold} ${currency} is still on hold.`);
-      }
-    }
-  
-    return { user, currency };
-  }
-  
   /**
   * Create ferry ticket
   */

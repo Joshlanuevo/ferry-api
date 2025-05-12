@@ -1,7 +1,12 @@
 export interface UserBalance {
     userId: string;
-    total: number;
+    total: CurrencyInstance;
     currency: string;
     count: number;
-    last5: any[];
+    last5: { amount: number; desc: string }[];
+}
+
+interface CurrencyInstance {
+    amount: number;
+    currency: string;
 }

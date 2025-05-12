@@ -15,7 +15,17 @@ export class UserBalanceService {
 
     private static async getUserInternal(userId: string): Promise<UserModel | null> {
         const userDoc = await db.collection(FirebaseCollections.users).doc(userId).get();
-        return userDoc.exists ? (userDoc.data() as UserModel) : null;
+        if (!userDoc.exists) return null;
+
+        const userData = userDoc.data() as UserModel;
+        return {
+            ...userData,
+            userId: userDoc.id, // attach the document ID explicitly
+            toJSON: () => ({
+                ...userData,
+                userId: userDoc.id,
+            }),
+        };
     }
 
     static async getUser(userId: string): Promise<UserModel | null> {
@@ -30,29 +40,32 @@ export class UserBalanceService {
     static async getUserBalanceData(userId: string): Promise<UserBalance | null> {
         try {
             const user = await this.getUserInternal(userId);
-            if (!user || user.access_level === UserTypes.ADMIN) {
-                return null;
-            }
-    
+            if (!user) return null;
+
             const walletId = await this.getEffectiveUserWalletId(user);
-            const balanceDoc = await db.collection(FirebaseCollections.user_balance).doc(walletId).get();
-            
-            if (!balanceDoc.exists) {
-                return {
-                    userId: walletId,
-                    total: 0,
-                    count: 0,
-                    last5: [],
-                    currency: 'PHP',
-                } as UserBalance;
-            }
-    
-            return balanceDoc.data() as UserBalance;    
+            const walletUser = await this.getUserInternal(walletId);
+            if (!walletUser) return null;
+
+            const balanceDoc = await db
+                .collection(FirebaseCollections.user_balance)
+                .doc(walletId)
+                .get();
+
+            const data = balanceDoc.data() as UserBalance | undefined;
+            const currency = walletUser.currency ?? 'PHP';
+            const totalAmount = typeof data?.total === 'object' ? data.total.amount : data?.total ?? 0;
+
+            return {
+                userId: walletId,
+                total: { amount: totalAmount, currency },
+                count: data?.count ?? 0,
+                last5: data?.last5 ?? [],
+                currency,
+            };
         } catch (error) {
-            console.error('Error getting user balance data:', error);
             throw new Error('Failed to retrieve user balance data');
         }
-    };
+    }
 
     private static async getEffectiveUserWalletId(user: UserModel): Promise<string> {
         try {
